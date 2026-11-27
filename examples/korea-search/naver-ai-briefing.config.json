@@ -1,0 +1,24 @@
+{
+  "sample": true,
+  "brand": "예시 행사",
+  "domains": ["행사.example"],
+  "ownedUrlPrefixes": ["https://blog.naver.com/example-events"],
+  "observations": [
+    {
+      "engine": "naver-ai-briefing",
+      "query": "예시 행사 일정은 어디서 확인하나요?",
+      "locale": "ko-KR",
+      "observedAt": "2026-11-01T00:15:00+09:00",
+      "answer": "예시 행사 홈페이지에서 일정을 확인할 수 있습니다.",
+      "sources": ["https://행사.example/일정"]
+    },
+    {
+      "engine": "naver-ai-briefing",
+      "query": "예시 행사 후기 모아보기",
+      "locale": "ko-KR",
+      "observedAt": "2026-11-01T00:16:00+09:00",
+      "answer": "예시 행사 후기는 다른 블로그에서도 확인할 수 있습니다.",
+      "sources": ["https://blog.naver.com/example-events-fan/123"]
+    }
+  ]
+}

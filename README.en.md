@@ -39,6 +39,8 @@ You can also supply local HTML paths in `targets` or a sitemap URL in `sitemap`.
 
 Use the [before-and-after AI citation guide](docs/ai-comparison.en.md) to compare the same questions and markets with a runnable synthetic example.
 
+For Korean search, use the [Naver, Daum and AI Briefing measurement guide](docs/korea-search.en.md).
+
 ## Install skills or contribute
 
 To install the audit and citation skills for Claude Code and Codex, run this in the project where you use the agent.
