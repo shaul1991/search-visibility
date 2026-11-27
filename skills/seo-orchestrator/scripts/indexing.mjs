@@ -1,6 +1,6 @@
 // A bot-scoped noindex only applies to that bot. Keep every rule and its source
 // so a later "index" cannot conceal an earlier restriction (or vice versa).
-const metaScopes = new Set(["robots", "googlebot", "yeti", "bingbot", "applebot"]);
+const metaScopes = new Set(["robots", "googlebot", "googlebot-news", "googlebot-image", "yeti", "bingbot", "applebot", "duckduckbot", "daum"]);
 const valuedRules = new Set(["max-snippet", "max-image-preview", "max-video-preview", "unavailable_after", "ai-training", "ai-grounding"]);
 
 export function indexingRules(metaTags, headerLines) {
@@ -37,7 +37,6 @@ export function indexingRules(metaTags, headerLines) {
 export function reportIndexing(rules, add, expectIndexable) {
   let genericNoindex = false;
   for (const { scope, value, source } of rules) {
-    if (!metaScopes.has(scope)) continue;
     const excluded = /^(?:noindex|none)$/.test(value);
     if (excluded && scope === "robots") genericNoindex = true;
     const level = excluded ? (expectIndexable ? "FAIL" : "WARN") : "INFO";

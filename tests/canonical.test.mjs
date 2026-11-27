@@ -64,14 +64,24 @@ test("relative target uses the first head base or the final page URL", () => {
   assert.ok(offline.every(r => r.level !== "FAIL"));
 });
 
-test("local HTML distinguishes proven root-relative conflicts from base-dependent targets", () => {
-  for (const other of ["/b", "https://example.org/b"]) {
-    const conflict = results(link("/a") + link(other), null);
-    assert.ok(conflict.some(r => r.level === "FAIL" && r.detail.includes("서로 다른")));
+test("local HTML distinguishes proven canonical conflicts from base-dependent targets", () => {
+  const incompatible = [
+    ["/a", "/b"], ["/a", "https://example.org/b"], ["./a", "./b"],
+    ["//a.example/page", "//b.example/page"], ["https://a.example/page", "//b.example/page"],
+    ["//a.example:80/page", "https://a.example/page"], ["../one/item", "../two/item"],
+  ];
+  for (const [first, second] of incompatible) {
+    const conflict = results(link(first) + link(second), null);
+    assert.ok(conflict.some(r => r.level === "FAIL" && r.detail.includes("서로 다른")), first + " vs " + second);
   }
-  for (const other of ["/./a", "./a", "https://example.org/a"]) {
-    const uncertainOrEqual = results(link("/a") + link(other), null);
-    assert.ok(uncertainOrEqual.some(r => r.level === "WARN"));
-    assert.ok(uncertainOrEqual.every(r => r.level !== "FAIL"));
+  const possiblyEqual = [
+    ["/a", "/./a"], ["/a", "./a"], ["/a", "https://example.org/a"],
+    ["//a.example:443/page", "https://a.example/page"], ["//a.example:80/page", "http://a.example/page"],
+    ["//a.example:443/page", "//a.example/page"], ["../q", "/dir/q"], ["#section", "?q#section"],
+  ];
+  for (const [first, second] of possiblyEqual) {
+    const rows = results(link(first) + link(second), null);
+    assert.ok(rows.some(r => r.level === "WARN"));
+    assert.ok(rows.every(r => r.level !== "FAIL"), first + " vs " + second);
   }
 });

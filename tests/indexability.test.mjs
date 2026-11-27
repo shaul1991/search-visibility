@@ -1,7 +1,10 @@
+import { listenOnLoopback } from "./loopback.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -36,7 +39,7 @@ test("scoped header lines do not leak to later lines or unrelated engines", () =
     "Googlebot: max-snippet:50, nofollow, NOINDEX", "Bingbot: none",
     "OtherBot: noindex", "all",
   ]);
-  assert.deepEqual(rows.filter(r => r.level === "FAIL").map(r => r.channel), ["googlebot", "bingbot"]);
+  assert.deepEqual(rows.filter(r => r.level === "FAIL").map(r => r.channel), ["googlebot", "bingbot", "otherbot"]);
   assert.equal(pageNoindex, false);
   assert.ok(rows.some(r => r.channel === "공통" && r.detail === "robots: all"));
   assert.ok(reportsFor("", ["bingbot: all", "none"]).pageNoindex);
@@ -56,9 +59,8 @@ test("CLI reads the final response headers, preserves repeats, and only gates no
       res.end(gzipSync(html));
     }
   });
-  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-  t.after(() => { server.close(); server.closeAllConnections?.(); });
-  const origin = `http://127.0.0.1:${server.address().port}`;
+  const origin = await listenOnLoopback(server, t);
+  if (!origin) return;
   const { results } = await run(origin + "/old");
   assert.ok(results.some(r => r.item === "X-Robots-Tag" && r.level === "WARN" && r.channel === "공통"));
   assert.ok(!results.some(r => r.detail.includes("applebot: none")));
@@ -69,4 +71,20 @@ test("CLI reads the final response headers, preserves repeats, and only gates no
     assert.deepEqual(fails.map(r => [r.item, r.channel]), [["X-Robots-Tag", "공통"]]);
     return true;
   });
+});
+
+test("offline public CLI gate applies restrictive rules for specialized crawlers", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "seo-page-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, "page.html");
+  const html = good.replace("</head>", '<meta name="googlebot-news" content="index"><meta name="googlebot-news" content="none"></head>');
+  await writeFile(file, html);
+  await assert.rejects(exec(process.execPath, [cli, file, "--expect-indexable", "--json"]), error => {
+    assert.equal(error.code, 1);
+    const fails = JSON.parse(error.stdout).results.filter(row => row.level === "FAIL");
+    assert.deepEqual(fails.map(row => row.channel), ["googlebot-news"]);
+    return true;
+  });
+  const normal = await exec(process.execPath, [cli, file, "--json"]);
+  assert.ok(JSON.parse(normal.stdout).results.some(row => row.level === "WARN" && row.channel === "googlebot-news"));
 });

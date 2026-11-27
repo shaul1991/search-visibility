@@ -1,3 +1,4 @@
+import { listenOnLoopback } from "./loopback.mjs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { test } from "node:test";
@@ -60,9 +61,8 @@ test("URL checks use the final page path, retain rule evidence and flag HTTP 429
       res.writeHead(200, { "content-type": "text/html" }).end("<title>행사 목록</title>");
     }
   });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
-  const origin = "http://127.0.0.1:" + server.address().port;
+  const origin = await listenOnLoopback(server, t);
+  if (!origin) return;
   const { results } = await run(origin + "/old");
   const decision = results.find((row) => row.item === "robots.txt *");
   assert.equal(decision.level, "INFO"); // /events/public/ is longer than /*?preview=1$

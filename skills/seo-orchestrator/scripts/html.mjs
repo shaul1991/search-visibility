@@ -134,6 +134,34 @@ export function httpUrl(value, base) {
   }
 }
 
+// 로컬 파일은 배포 호스트와 디렉터리를 모릅니다. 확정되는 URL 부분만 비교합니다.
+function canonicalTargetsCanAgree(values, scheme) {
+  const fullUrls = new Set();
+  const rootedPaths = new Set();
+  const searches = new Set();
+  const hashes = new Set();
+  let longestSuffix = "";
+  for (const value of values) {
+    const ref = value.replace(/[\t\n\r]/g, "").replaceAll("\\", "/");
+    const url = new URL(value, `${scheme}://example.invalid/`);
+    const hasAuthority = /^(?:https?:)?\/\//i.test(ref);
+    if (hasAuthority) fullUrls.add(url.href);
+    hashes.add(url.hash);
+    if (!ref.startsWith("#")) searches.add(url.search);
+    if (/^[?#]/.test(ref)) continue; // 배포 페이지의 경로를 그대로 상속합니다.
+    if (hasAuthority || ref.startsWith("/")) rootedPaths.add(url.pathname);
+    // 상대 경로가 ../를 포함해도 루트에서 해석한 끝부분은 항상 동일합니다.
+    const suffix = url.pathname;
+    if (!longestSuffix.endsWith(suffix)) {
+      if (!suffix.endsWith(longestSuffix)) return false;
+      longestSuffix = suffix;
+    }
+  }
+  const [rootedPath] = rootedPaths;
+  return fullUrls.size <= 1 && rootedPaths.size <= 1 && searches.size <= 1 && hashes.size <= 1
+    && (!rootedPath || rootedPath.endsWith(longestSuffix));
+}
+
 // 한 개의 유효한 대상을 확인했을 때만 OG나 최종 응답 URL과 대조합니다.
 export function checkCanonical(page, add, pageUrl) {
   const report = (level, detail) => add(level, "공통", "canonical", detail, "google-search");
@@ -166,14 +194,9 @@ export function checkCanonical(page, add, pageUrl) {
       targets.add(url);
     }
   }
-  // 루트 기준 경로는 배포 도메인을 몰라도 절대 URL의 경로와 대조할 수 있습니다.
-  const comparable = [...targets, ...[...unresolved].filter(value => value.startsWith("/"))];
-  const resourcePaths = comparable.map(value => {
-    const { pathname, search, hash } = new URL(value, "https://example.invalid/");
-    return pathname + search + hash;
-  });
-  if (targets.size > 1 || new Set(resourcePaths).size > 1) {
-    report("FAIL", `서로 다른 대표 URL 선언: ${comparable.join(", ")}`);
+  const declarations = [...targets, ...unresolved];
+  if (declarations.length > 1 && !["https", "http"].some(scheme => canonicalTargetsCanAgree(declarations, scheme))) {
+    report("FAIL", `서로 다른 대표 URL 선언: ${declarations.join(", ")}`);
     return null;
   }
   if (headLinks.length > 1) {
