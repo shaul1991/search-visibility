@@ -1,0 +1,11 @@
+{
+  "sample": true,
+  "brand": "예시 행사",
+  "aliases": [
+    "Example Events"
+  ],
+  "domains": [
+    "행사.example"
+  ],
+  "observations": "before.answers.json"
+}

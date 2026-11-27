@@ -37,6 +37,8 @@ You can also supply local HTML paths in `targets` or a sitemap URL in `sitemap`.
 - **AI answers.** Set `brand` to your brand name, then add the answers you collected to `observations` as an array or a path to a JSON file. Each record needs `engine`, `query`, `observedAt`, `answer`, and `sources`. Use an empty list for an observed answer with no cited links. Include the observation language in `locale` when comparing markets. The CLI analyzes the supplied sample locally. [Example records](examples/demo/answers.json)
 - **Citation ownership.** Put hosts you own in `domains` to include their subdomains. For an account on a shared host, put its full HTTP(S) account URL in `ownedUrlPrefixes`. A citation counts if either rule matches. For example, `https://github.com/example-team` covers that account and its repositories. A sibling account such as `example-team-tools` is outside that scope. For a single GitHub account, use only the account prefix. Adding `github.com` to `domains` would include every account. Prefixes require a path on the same origin (scheme, host, and port). Omit credentials, query strings, and fragments.
 
+Use the [before-and-after AI citation guide](docs/ai-comparison.en.md) to compare the same questions and markets with a runnable synthetic example.
+
 ## Install skills or contribute
 
 To install the audit and citation skills for Claude Code and Codex, run this in the project where you use the agent.
