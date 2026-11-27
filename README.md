@@ -162,6 +162,8 @@ node skills/seo-orchestrator/scripts/seo-check.mjs https://example.com/events/12
 
 크롤링 허용 여부는 점검 시점의 규칙을 해석한 결과입니다. 실제 색인 상태는 Search Console·서치어드바이저에서 확인합니다. Google이 선택한 대표 URL은 Search Console의 URL 검사에서 확인할 수 있습니다.
 
+언어·지역별 URL의 canonical과 색인 지시는 [다국어 페이지 점검 안내](docs/localized-pages.ko.md)를 따라 확인할 수 있습니다.
+
 ## 최신성
 
 검색엔진 정책과 수치는 바뀝니다. 각 Skill에 확인일과 원문 링크를 적었고, 판단이 결과를 좌우하면 원문을 다시 열도록 지시합니다. 바뀐 내용을 발견하면 이슈나 PR로 알려 주세요.

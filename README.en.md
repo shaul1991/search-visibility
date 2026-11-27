@@ -31,6 +31,8 @@ npm run visibility -- ./config.json
 
 You can also supply local HTML paths in `targets` or a sitemap URL in `sitemap`. Input paths resolve relative to the config file. Remote audits request the specified sites. Reports are written locally under `visibility-reports/`.
 
+Use the [localized page audit guide](docs/localized-pages.en.md) to check canonical and indexability signals for language and regional variants.
+
 ## Measure search and AI visibility
 
 - **Google search.** Set `searchConsole` to the path of a UTF-8 CSV exported from a property you can access. Import one query, page, or date table with English or Korean headers for the dimension, clicks, and impressions. The report calculates CTR from the imported rows. [Import a localized CSV](docs/search-console.en.md).
