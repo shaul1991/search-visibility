@@ -1,0 +1,20 @@
+[
+  {
+    "engine": "Example Search",
+    "query": "서울의 주말 행사 일정은 어디서 확인하나요?",
+    "observedAt": "2026-11-04T09:00:00+09:00",
+    "locale": "ko-KR",
+    "answer": "예시 행사는 주말 행사 일정을 제공합니다.",
+    "sources": []
+  },
+  {
+    "engine": "Example Search",
+    "query": "Where can I find weekend events in New York?",
+    "observedAt": "2026-11-04T09:00:00-05:00",
+    "locale": "en-US",
+    "answer": "Example Events lists weekend events in New York.",
+    "sources": [
+      "https://행사.example/new-york"
+    ]
+  }
+]

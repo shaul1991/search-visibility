@@ -20,6 +20,8 @@ npm run demo
 
 출력된 `index.html`을 브라우저에서 열면 됩니다. 실행 전에 화면을 보려면 [샘플 HTML 보고서를 다운로드](https://github.com/shaul1991/search-visibility/releases/download/v0.5.0/search-visibility-demo.html)해 여세요. 예제에는 로컬 HTML 두 개, 합성 검색 성과 CSV, 합성 답변 세 건이 들어 있습니다. 실제 사이트를 점검할 때는 URL 목록이나 사이트맵을 지정하세요. 본인의 Search Console 내보내기와 직접 수집한 답변을 선택적으로 추가할 수 있습니다. [실제 데이터로 실행하기](docs/workbench.ko.md) · [참고한 공개 프로젝트 21개](docs/landscape.ko.md)
 
+같은 질문의 AI 답변을 다시 수집했다면 [변경 전후 AI 출처 인용 비교](docs/ai-comparison.ko.md)에서 두 보고서를 만드는 방법을 확인하세요.
+
 ## 구성
 
 필요한 스킬만 골라 설치할 수 있습니다. 여러 채널을 함께 점검할 때는 `seo-orchestrator`로 시작하고, 한 채널의 문제를 알고 있다면 해당 스킬을 바로 실행하세요. 예를 들어 네이버 소유 확인은 `naver-search`, AI 검색의 크롤러 접근과 답변 인용 확인 절차는 `ai-crawlers`가 다룹니다.
