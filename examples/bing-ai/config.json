@@ -1,0 +1,23 @@
+{
+  "sample": true,
+  "brand": "Example Studio",
+  "domains": ["bücher.example"],
+  "observations": [
+    {
+      "engine": "microsoft-copilot",
+      "query": "온라인에서 독일어 책은 어디서 찾을 수 있나요?",
+      "locale": "ko-KR",
+      "observedAt": "2026-11-01T00:15:00+09:00",
+      "answer": "Example Studio의 독일어 도서 목록을 확인해 보세요.",
+      "sources": ["https://xn--bcher-kva.example/ko/%EB%8F%84%EC%84%9C"]
+    },
+    {
+      "engine": "microsoft-copilot",
+      "query": "Where can I find German books online?",
+      "locale": "en-CA",
+      "observedAt": "2026-10-31T08:15:00-07:00",
+      "answer": "Example Studio is one option to explore.",
+      "sources": []
+    }
+  ]
+}

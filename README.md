@@ -24,6 +24,8 @@ npm run demo
 
 [네이버·Daum 웹 검색과 네이버 AI 브리핑 측정 안내](docs/korea-search.ko.md)에서 관측 절차와 합성 예제를 확인할 수 있습니다.
 
+[Bing과 Copilot AI 인용 측정 안내](docs/bing-ai.ko.md)에서 Bing Webmaster Tools 지표와 직접 수집한 답변을 비교하는 방법을 확인하세요.
+
 ## 구성
 
 필요한 스킬만 골라 설치할 수 있습니다. 여러 채널을 함께 점검할 때는 `seo-orchestrator`로 시작하고, 한 채널의 문제를 알고 있다면 해당 스킬을 바로 실행하세요. 예를 들어 네이버 소유 확인은 `naver-search`, AI 검색의 크롤러 접근과 답변 인용 확인 절차는 `ai-crawlers`가 다룹니다.

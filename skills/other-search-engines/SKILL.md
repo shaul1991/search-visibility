@@ -20,6 +20,7 @@ description: >-
 
 - Bingbot 확인: 역방향 DNS 등 [How to Verify Bingbot](https://www.bing.com/webmasters/help/how-to-verify-bingbot-3905dc26).
 - Bing Webmaster Tools의 **AI Performance**(2026-02 공개 미리보기): Copilot·Bing AI 요약 등에서 사이트가 인용된 횟수, 인용 페이지, 그라운딩 검색어를 보여 줍니다. 출처: [Bing 블로그 2026-02-10](https://blogs.bing.com/webmaster/2026/2/Introducing-AI-Performance-in-Bing-Webmaster-Tools-Public-Preview/)
+- **기간 비교:** AI Performance의 Compare에서 기간 길이와 필터를 맞춥니다. Citation Share는 특정 그라운딩 검색어에서 전체 인용 중 해당 사이트가 차지한 비중입니다. 직접 수집한 답변의 소유 출처 인용률과 별도로 기록합니다. [Microsoft의 지표 설명](https://blogs.bing.com/search/2026/6/New-AI-Visibility-Insights-in-Bing-Webmaster-Tools-Intents-Topics-Citation-Share-Compare/)
 - 지원 robots 메타(현재): `noindex`, `nosnippet`, `noarchive`(캐시 없음, Chat·Copilot에서 링크하지 않음, 학습 미사용), `nocache`(Chat·Copilot에서 URL·제목·스니펫만) 등. 출처: [Robots meta tags Bing supports](https://www.bing.com/webmasters/help/robots-meta-tags-and-attributes-that-bing-supports-5198d240)
 - ⚠️ **2027년 변경**(2026-10-30 발표): `noarchive`·`nocache` 대신 AI 학습·그라운딩 설정을 따로 둡니다.
   - 학습: robots.txt `User-Agent: __usage_ai-training` + `Disallow: /`(경로 단위 가능) 또는 페이지 `<meta name="Bingbot" content="ai-training:disallow">` / `X-Robots-Tag: Bingbot: ai-training:disallow`
