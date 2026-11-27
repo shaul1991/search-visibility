@@ -114,14 +114,14 @@ function rateCell(rate, count, sample) {
 
 function observationRow(record) {
   const mentions = record.mentioned ? "브랜드 언급 있음" : "브랜드 언급 없음";
-  const citation = record.cited == null ? "도메인 인용 측정 안 됨" : record.cited ? "도메인 인용 있음" : "도메인 인용 없음";
+  const citation = record.cited == null ? "소유 출처 인용 측정 안 됨" : record.cited ? "소유 출처 인용 있음" : "소유 출처 인용 없음";
   const context = [record.model, record.locale].filter(Boolean).map(html).join(" · ");
   const matched = new Set(record.matchedSources ?? []);
   const sources = new Set([...(record.sources ?? []), ...matched]);
   return `<details><summary>${html(record.engine)} · ${html(record.query)}</summary>
     <p class="muted">관측 시각 <time>${html(record.observedAt)}</time>${context ? ` · ${context}` : ""}</p>
     <p>${mentions}${record.matchedTerms?.length ? ` (${record.matchedTerms.map(html).join(", ")})` : ""} · ${citation}</p>
-    ${sources.size ? `<p>답변의 인용 출처</p><ul>${[...sources].map((s) => `<li>${sourceLink(s)}${matched.has(s) ? " · 지정 도메인" : ""}</li>`).join("")}</ul>` : "<p>기록한 인용 출처가 없습니다.</p>"}
+    ${sources.size ? `<p>답변의 인용 출처</p><ul>${[...sources].map((s) => `<li>${sourceLink(s)}${matched.has(s) ? " · 소유 출처" : ""}</li>`).join("")}</ul>` : "<p>기록한 인용 출처가 없습니다.</p>"}
     ${record.evidenceUrl ? `<p>답변 근거 링크 · ${sourceLink(record.evidenceUrl)}</p>` : ""}</details>`;
 }
 
@@ -130,9 +130,9 @@ function observationSection(ai) {
     return '<section aria-labelledby="answers"><h2 id="answers">AI 답변 관측</h2><p>기록한 답변이 없습니다. 관측한 질문·답변과 인용 URL을 추가하면 엔진별 결과를 볼 수 있습니다.</p></section>';
   }
   return `<section aria-labelledby="answers"><h2 id="answers">AI 답변 관측</h2>
-    <p>입력한 답변 ${html(ai.sampleSize)}개를 기준으로 브랜드 언급과 지정 도메인 인용을 집계합니다.</p>
-    ${ai.citationRate == null ? '<p class="notice">인용을 집계할 도메인이 지정되지 않았습니다.</p>' : ""}
-    <table><caption>엔진별 관측 결과</caption><thead><tr><th scope="col">엔진</th><th scope="col">답변 수</th><th scope="col">브랜드 언급률</th><th scope="col">도메인 인용률</th></tr></thead><tbody>
+    <p>입력한 답변 ${html(ai.sampleSize)}개를 기준으로 브랜드 언급과 소유 출처 인용을 집계합니다.</p>
+    ${ai.citationRate == null ? '<p class="notice">인용을 집계할 도메인이나 계정 URL 경로가 지정되지 않았습니다.</p>' : ""}
+    <table><caption>엔진별 관측 결과</caption><thead><tr><th scope="col">엔진</th><th scope="col">답변 수</th><th scope="col">브랜드 언급률</th><th scope="col">소유 출처 인용률</th></tr></thead><tbody>
     ${ai.byEngine.map((row) => `<tr><th scope="row">${html(row.engine)}</th><td>${html(row.sampleSize)}</td>
       <td>${rateCell(row.mentionRate, row.mentions, row.sampleSize)}</td>
       <td>${rateCell(row.citationRate, row.citations, row.sampleSize)}</td></tr>`).join("")}</tbody></table>
@@ -176,6 +176,6 @@ ${sample === true ? '<p class="sample">이 보고서는 합성 예시 데이터�
 <section aria-labelledby="overview"><h2 id="overview">점검 요약</h2><dl class="metrics">
   <div><dt>페이지 점검 완료</dt><dd>${site.pages.length - failedPages}개<small>대상 ${site.pages.length}개 · 점검 오류 ${failedPages}개</small></dd></div>
   <div><dt>브랜드 언급률</dt><dd>${rateText(ai.mentionRate)}<small>${countText(ai.mentions, ai.sampleSize, ai.mentionRate)}</small></dd></div>
-  <div><dt>도메인 인용률</dt><dd>${rateText(ai.citationRate)}<small>${countText(ai.citations, ai.sampleSize, ai.citationRate)}</small></dd></div>
+  <div><dt>소유 출처 인용률</dt><dd>${rateText(ai.citationRate)}<small>${countText(ai.citations, ai.sampleSize, ai.citationRate)}</small></dd></div>
 </dl></section>${siteSection(site)}${searchSection(searchPerformance)}${observationSection(ai)}</main></body></html>\n`;
 }

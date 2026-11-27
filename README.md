@@ -1,5 +1,7 @@
 # Search Visibility
 
+[English quickstart](README.en.md)
+
 Search Visibility는 웹사이트가 일반 검색 결과와 AI 답변에서 어떻게 발견되고 인용되는지 점검하기 위한 오픈소스 Agent Skills 프로젝트입니다. Google·네이버·Daum 검색부터 ChatGPT·Claude·Perplexity의 크롤러 접근, 카카오톡·Meta·X의 링크 미리보기까지 다룹니다.
 
 - Claude Code, Codex 등 [Agent Skills](https://agentskills.io) 형식을 읽는 에이전트에서 씁니다.
@@ -30,7 +32,7 @@ npm run demo
 | [`daum-search`](skills/daum-search/SKILL.md) | Daum(카카오): Daum/Daum-Preview 로봇, 검색등록, 웹마스터도구 PIN, 웹문서 미노출 점검, 연관 채널, 카카오톡 채널·카카오맵 |
 | [`other-search-engines`](skills/other-search-engines/SKILL.md) | Bing(Edge·Copilot, 2027 AI 학습·그라운딩 설정), Brave Search(Brave 브라우저), DuckDuckGo, Apple(Safari·Spotlight·Siri) |
 | [`ai-crawlers`](skills/ai-crawlers/SKILL.md) | **AI 검색 노출 설정**: ChatGPT·Claude·Grok·Gemini·Copilot·Perplexity·Meta AI·Apple·Mistral별 근거 색인과 필요한 robots.txt·WAF/CDN 설정, 학습 차단과의 구분 |
-| [`ai-observations`](skills/ai-observations/SKILL.md) | 질문·엔진별 AI 답변에서 브랜드 언급과 소유 도메인 인용을 따로 집계하고 출처를 확인 |
+| [`ai-observations`](skills/ai-observations/SKILL.md) | 질문·엔진별 AI 답변에서 브랜드 언급과 소유 도메인·공유 플랫폼의 내 계정 인용을 따로 집계하고 출처를 확인 |
 | [`structured-data`](skills/structured-data/SKILL.md) | JSON-LD 템플릿(Event·WebSite·Organization+sameAs·BreadcrumbList·ItemList)과 Google·네이버 지원 차이 |
 | [`social-preview`](skills/social-preview/SKILL.md) | Open Graph·X 카드·카카오톡(스크랩 서버 IP·캐시 초기화)·Meta(Facebook·Instagram·Threads 크롤러 요구사항)·Daum 미리보기 |
 | [`indexnow`](skills/indexnow/SKILL.md) | 네이버·Bing 등에 변경 URL 알리기(키 파일, GET/POST, 응답 코드) |

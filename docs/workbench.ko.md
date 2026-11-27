@@ -25,6 +25,7 @@ npm run demo
   "brand": "우리 브랜드",
   "aliases": ["Our Brand"],
   "domains": ["example.com"],
+  "ownedUrlPrefixes": ["https://blog.naver.com/my-shop"],
   "sitemap": "https://example.com/sitemap.xml",
   "targets": ["./public/launch.html"],
   "expectIndexable": true,
@@ -52,7 +53,16 @@ npm run visibility -- ./config.json
 
 ### AI 답변 관측
 
-`observations`에는 배열이나 동일한 배열을 담은 JSON 파일 경로를 지정합니다. `brand`는 관측이 있는 경우 필수입니다. `domains`에는 추적할 호스트명을, `aliases`에는 실제 브랜드의 다른 표기를 넣습니다. 아래는 **합성 예시**입니다.
+`observations`에는 배열이나 동일한 배열을 담은 JSON 파일 경로를 지정합니다. `brand`는 관측이 있는 경우 필수입니다. `aliases`에는 실제 브랜드의 다른 표기를 넣습니다.
+
+인용 범위는 보유한 주소에 맞춰 지정합니다.
+
+- `domains`에는 직접 소유한 호스트명을 넣습니다. 해당 호스트와 모든 하위 도메인이 포함됩니다.
+- `ownedUrlPrefixes`에는 공유 플랫폼의 내 계정 URL을 넣습니다. 예를 들어 `https://blog.naver.com/my-shop`은 이 경로 자체와 `/my-shop/123`을 포함합니다. `/my-shop-2/123`처럼 이름이 비슷한 다른 계정은 별개입니다. 프로토콜·호스트·포트가 같아야 하며, 설정에는 인증정보·쿼리·프래그먼트를 제외한 HTTP(S) URL과 계정 경로를 입력합니다.
+
+두 목록 중 한 곳에 일치하면 인용으로 셉니다. 한 블로그만 추적할 때는 `ownedUrlPrefixes`에 계정 주소만 넣으세요. `domains`에 `blog.naver.com`도 넣으면 그 호스트의 모든 블로그가 집계됩니다.
+
+다음은 **합성 예시**입니다.
 
 ```json
 [
@@ -67,7 +77,7 @@ npm run visibility -- ./config.json
 ]
 ```
 
-한 행에는 실제로 확인한 답변 한 건을 넣습니다. 답변에서 직접 표시한 출처가 없으면 `sources: []`로 기록합니다. 답변을 얻지 못한 질문은 집계에서 제외합니다. 언급은 답변 본문의 브랜드·별칭, 인용은 출처의 호스트명과 소유 도메인·하위 도메인의 일치로 셉니다. 표본 0건 또는 추적 도메인 미지정은 보고서에 미측정으로 표시됩니다. 선택 필드 `evidenceUrl`, `model`, `locale`로 답변을 다시 확인할 맥락을 남길 수 있습니다. 공개할 보고서에는 포함해도 되는 질문·출처·공유 링크만 사용하세요. [관측 스킬](../skills/ai-observations/SKILL.md)
+한 행에는 실제로 확인한 답변 한 건을 넣습니다. 답변에서 직접 표시한 출처가 없으면 `sources: []`로 기록합니다. 답변을 얻지 못한 질문은 집계에서 제외합니다. 언급은 답변 본문의 브랜드·별칭, 인용은 답변에 표시된 출처 URL이 설정한 소유 범위에 속하는지로 셉니다. 표본이 없으면 두 비율 모두 미측정이며, 소유 범위만 지정하지 않았으면 인용률이 미측정입니다. 선택 필드 `evidenceUrl`, `model`, `locale`로 답변을 다시 확인할 맥락을 남길 수 있습니다. 공개할 보고서에는 포함해도 되는 질문·출처·공유 링크만 사용하세요. [관측 스킬](../skills/ai-observations/SKILL.md)
 
 ## CI에서 실행
 

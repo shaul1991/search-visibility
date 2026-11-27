@@ -31,14 +31,17 @@ export async function collectReport(configFile) {
   const baseDir = dirname(resolve(configFile));
   const config = await readJson(configFile);
   if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("설정은 JSON 객체여야 합니다.");
-  const keys = new Set(["brand", "aliases", "domains", "targets", "sitemap", "limit", "expectIndexable", "observations", "searchConsole", "sample"]);
+  const keys = new Set(["brand", "aliases", "domains", "ownedUrlPrefixes", "targets", "sitemap", "limit", "expectIndexable", "observations", "searchConsole", "sample"]);
   for (const key of Object.keys(config)) {
     if (!keys.has(key)) throw new Error(`알 수 없는 설정: ${key}`);
   }
   if (config.sample !== undefined && typeof config.sample !== "boolean") throw new Error("sample은 true 또는 false여야 합니다.");
   const observations = typeof config.observations === "string"
     ? await readJson(resolve(baseDir, config.observations)) : config.observations;
-  const ai = analyzeObservations({brand: config.brand, aliases: config.aliases, domains: config.domains, observations});
+  const ai = analyzeObservations({
+    brand: config.brand, aliases: config.aliases, domains: config.domains,
+    ownedUrlPrefixes: config.ownedUrlPrefixes, observations,
+  });
   let searchPerformance = null;
   if (config.searchConsole !== undefined) {
     if (typeof config.searchConsole !== "string" || !config.searchConsole.trim()) throw new Error("searchConsole에는 CSV 파일 경로가 필요합니다.");

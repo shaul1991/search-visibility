@@ -45,3 +45,26 @@ test("collection failures retain partial results, invalid configuration creates 
   assert.equal(run(cwd, "broken.json", "--out", "invalid").status, 2);
   await assert.rejects(readFile(join(cwd, "invalid/index.html")), {code:"ENOENT"});
 });
+
+test("CLI attributes citations to the selected account on a shared international host", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-account-"));
+  t.after(() => rm(cwd, {recursive: true, force: true}));
+  const account = "https://bücher.example/링킵";
+  const config = {
+    brand: "lnkib",
+    ownedUrlPrefixes: [account],
+    observations: [account + "/guide", account + "-other/guide"].map(source => ({
+      engine: "Example", locale: "de-DE", query: "Hilfe", observedAt: "2026-11-26",
+      answer: "Ein Leitfaden.", sources: [source],
+    })),
+  };
+  await writeFile(join(cwd, "config.json"), JSON.stringify(config));
+  const result = run(cwd, "config.json", "--out", "report");
+  assert.equal(result.status, 0, result.stderr);
+  const {ai} = JSON.parse(await readFile(join(cwd, "report/report.json"), "utf8"));
+  assert.equal(ai.citationRate, 0.5);
+  assert.deepEqual(ai.records.map(row => row.cited), [true, false]);
+  assert.equal(ai.records[0].matchedSources[0], new URL(account + "/guide").href);
+  const html = await readFile(join(cwd, "report/index.html"), "utf8");
+  assert.match(html, /소유 출처 인용률/);
+});
