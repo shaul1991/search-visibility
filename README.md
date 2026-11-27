@@ -1,12 +1,14 @@
-# seo-skills
+# Search Visibility
 
-Google·네이버·Daum(카카오)·Bing·Brave·DuckDuckGo·Apple 검색, ChatGPT·Perplexity·Claude 같은 AI 검색, 카카오톡·Meta·X 공유 미리보기, 브라우저 대응 기준을 한곳에 모아 **조합해서 쓰는** 코딩 에이전트용 SEO Skill 묶음입니다. 한국 서비스처럼 여러 검색엔진과 메신저 공유를 함께 맞춰야 할 때를 위해 만들었습니다.
+Search Visibility는 웹사이트가 일반 검색 결과와 AI 답변에서 어떻게 발견되고 인용되는지 점검하기 위한 오픈소스 Agent Skills 프로젝트입니다. Google·네이버·Daum 검색부터 ChatGPT·Claude·Perplexity의 크롤러 접근, 카카오톡·Meta·X의 링크 미리보기까지 다룹니다.
 
 - Claude Code, Codex 등 [Agent Skills](https://agentskills.io) 형식을 읽는 에이전트에서 씁니다.
 - 각 규칙은 공식 문서를 2026-11-04에 직접 읽고 요약한 것이며, 절마다 원문 링크가 있습니다. 출처 목록은 [REFERENCES.md](REFERENCES.md).
 - Google, NAVER, Kakao, Microsoft, Brave, Apple, Meta, X, OpenAI, Perplexity, Anthropic 등과 관련 없는 비공식 저장소입니다.
 
 ## 구성
+
+필요한 스킬만 골라 설치할 수 있습니다. 여러 채널을 함께 점검할 때는 `seo-orchestrator`로 시작하고, 한 채널의 문제를 알고 있다면 해당 스킬을 바로 실행하세요. 예를 들어 네이버 소유 확인은 `naver-search`, AI 검색의 크롤러 접근과 답변 인용 확인 절차는 `ai-crawlers`가 다룹니다.
 
 | Skill | 다루는 것 |
 | --- | --- |
@@ -56,13 +58,13 @@ npx skills add coreyhaines31/marketingskills -s product-marketing content-strate
 
 ```bash
 # 전체
-npx skills add shaul1991/seo-skills -a claude-code -a codex
+npx skills add shaul1991/search-visibility -s '*' -a claude-code -a codex
 
 # 일부만
-npx skills add shaul1991/seo-skills -s seo-orchestrator naver-search social-preview -a claude-code -a codex
+npx skills add shaul1991/search-visibility -s seo-orchestrator naver-search social-preview -a claude-code -a codex
 
 # 목록만 보기
-npx skills add shaul1991/seo-skills --list
+npx skills add shaul1991/search-visibility --list
 ```
 
 에이전트 세션 안에서 실행하면 `.agents/skills`에만 들어갈 수 있으니 `-a`로 대상 에이전트를 지정합니다.
@@ -70,9 +72,11 @@ npx skills add shaul1991/seo-skills --list
 Claude Code 플러그인:
 
 ```text
-/plugin marketplace add shaul1991/seo-skills
+/plugin marketplace add shaul1991/search-visibility
 /plugin install seo-skills@seo-skills
 ```
+
+`seo-skills@seo-skills`는 기존 설치와 호환되는 플러그인·마켓플레이스 식별자입니다.
 
 직접 복사: `skills/<이름>/` 폴더를 프로젝트의 `.claude/skills/`(Claude Code) 또는 `.agents/skills/`(Codex)에 복사합니다.
 
@@ -110,6 +114,8 @@ node skills/seo-orchestrator/scripts/seo-check.mjs https://example.com/events/12
 검색엔진 정책과 수치는 바뀝니다. 각 Skill에 확인일과 원문 링크를 적었고, 판단이 결과를 좌우하면 원문을 다시 열도록 지시합니다. 바뀐 내용을 발견하면 이슈나 PR로 알려 주세요.
 
 ## 개발
+
+각 스킬은 `skills/<이름>/SKILL.md`에서 독립적으로 관리합니다. 새 스킬을 추가할 때는 어떤 요청에 쓰는지 명시하고 위 목록에 등록합니다. 다른 스킬과 함께 실행할 때 순서나 결과 인계가 필요하면 [seo-orchestrator](skills/seo-orchestrator/SKILL.md)에 연결합니다.
 
 ```bash
 npm test   # node --test, 의존성 없음
