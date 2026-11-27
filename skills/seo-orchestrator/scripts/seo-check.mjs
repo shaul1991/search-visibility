@@ -14,7 +14,7 @@ import { indexingRules, reportIndexing } from "./indexing.mjs";
 
 export { parseHtml };
 
-const UA = "seo-skills-check/0.1 (+https://github.com/shaul1991/seo-skills)";
+const UA = "seo-skills-check/0.1 (+https://github.com/shaul1991/search-visibility)";
 
 // ---------- JSON-LD ----------
 

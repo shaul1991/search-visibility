@@ -1,10 +1,10 @@
 {
   "name": "seo-skills",
   "description": "Google·네이버·Daum·Bing·Brave·Apple·AI 검색·카카오톡·Meta·X SEO Skill 묶음과 단일 페이지 점검 스크립트",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": { "name": "shaul1991" },
-  "homepage": "https://github.com/shaul1991/seo-skills",
-  "repository": "https://github.com/shaul1991/seo-skills",
+  "homepage": "https://github.com/shaul1991/search-visibility",
+  "repository": "https://github.com/shaul1991/search-visibility",
   "license": "MIT",
   "keywords": ["seo", "naver", "google", "daum", "bing", "brave", "applebot", "ai-crawlers", "open-graph", "twitter-card", "kakao", "indexnow", "structured-data"],
   "skills": "./skills"
