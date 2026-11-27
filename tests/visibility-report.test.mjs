@@ -54,15 +54,15 @@ test("report shows denominators, missing configuration, and source evidence", ()
   let html = renderReport(report);
   assert.match(html, /0% \(0\/2\)/);
   assert.match(html, /50% \(1\/2\)/);
-  assert.match(html, /href="https:\/\/brand\.example\/one"[^>]*>[^<]+<\/a> · 지정 도메인/);
+  assert.match(html, /href="https:\/\/brand\.example\/one"[^>]*>[^<]+<\/a> · 소유 출처/);
   assert.match(html, /href="https:\/\/other\.example\/"/);
   report.ai.citationRate = null;
   report.ai.byEngine[0].citationRate = null;
   report.ai.records[0].cited = null;
   html = renderReport(report);
-  assert.match(html, /인용을 집계할 도메인이 지정되지 않았습니다/);
-  assert.match(html, /도메인 인용 측정 안 됨/);
-  assert.doesNotMatch(html, /도메인 인용 없음/);
+  assert.match(html, /인용을 집계할 도메인이나 계정 URL 경로가 지정되지 않았습니다/);
+  assert.match(html, /소유 출처 인용 측정 안 됨/);
+  assert.doesNotMatch(html, /소유 출처 인용 없음/);
 });
 
 test("user-controlled fields stay text and hazardous source protocols never become links", () => {

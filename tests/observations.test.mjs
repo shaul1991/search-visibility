@@ -59,6 +59,48 @@ test("distinguishes no observations, no tracked domains, and measured zero", () 
   assert.equal(measured.citationRate, 0);
 });
 
+test("attributes shared host citations to the exact account or a descendant on the same origin", () => {
+  const own = "https://blog.naver.com/my-shop";
+  const sources = [own + "?tab=posts#latest", own + "/123", own + "-2/123", own + "%2F123", own + "%3Ftab",
+    "https://blog.naver.com/other-shop/123", "https://m.blog.naver.com/my-shop/123",
+    "http://blog.naver.com/my-shop", "https://blog.naver.com:8443/my-shop", "https://blog.naver.com/My-Shop"];
+  const result = analyzeObservations({
+    brand: "가온", ownedUrlPrefixes: [own + "/"],
+    observations: sources.map(source => ({ ...sample, sources: [source] })),
+  });
+  assert.deepEqual(result.records.map(row => row.cited), [true, true, ...Array(8).fill(false)]);
+  assert.equal(result.citationRate, 2 / 10);
+  assert.equal(result.byEngine[0].citations, 2);
+  assert.deepEqual(result.records[1].matchedSources, [own + "/123"]);
+  assert.equal(analyzeObservations({brand:"가온", ownedUrlPrefixes:[own]}).citationRate, null);
+});
+
+test("combines whole domains with international account URLs while preserving reserved escapes", () => {
+  const result = analyzeObservations({
+    brand: "가온", domains: ["example.org"],
+    ownedUrlPrefixes: ["https://github.com/%61cme", "https://예시.한국/가온", "https://example.net/one%2ftwo"],
+    observations: [{ ...sample, sources: [
+      "https://api.example.org/a", "https://github.com/acme/manual",
+      new URL("https://예시.한국/가온").href.replace(/%[0-9A-F]{2}/g, e => e.toLowerCase()) + "/docs",
+      "https://example.net/one%2Ftwo/child", "https://example.net/one/two/child",
+      "https://github.com/acme-old", "https://github.com/acme/../elsewhere",
+    ] }],
+  });
+  assert.deepEqual(result.records[0].matchedSources, result.records[0].sources.slice(0, 4));
+  assert.equal(result.citations, 1);
+});
+
+test("rejects invalid ownership scopes before analyzing any data", () => {
+  for (const ownedUrlPrefixes of [
+    "https://github.com/acme", [""], ["github.com/acme"], ["https://github.com"], ["https://github.com///"],
+    ["https://github.com/acme/.."], ["https://github.com/acme?"], ["https://github.com/acme#"],
+    ["https://github.com/acme?tab=repos"], ["https://github.com/acme#section"],
+    ["https://user:secret@github.com/acme"], ["https://github.com/acme%2"], ["ftp://github.com/acme"],
+  ]) {
+    assert.throws(() => analyzeObservations({ ownedUrlPrefixes }), /ownedUrlPrefixes/);
+  }
+});
+
 test("rejects missing evidence, non-HTTP URLs and impossible or ambiguous observation dates", () => {
   const invalid = [
     ["answer", " "], ["sources", undefined], ["sources", ["javascript:void(0)"]],

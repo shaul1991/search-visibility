@@ -33,6 +33,22 @@ function canonicalDomain(value) {
   return domain;
 }
 
+function comparablePath(url) {
+  // Decode only unreserved characters: an encoded slash is data, not a segment boundary.
+  return url.pathname.replace(/%([0-9a-f]{2})/gi, (escape, hex) => {
+    const char = String.fromCharCode(parseInt(hex, 16));
+    return /^[a-z0-9._~-]$/i.test(char) ? char : escape.toUpperCase();
+  });
+}
+
+function ownedPrefix(value) {
+  const url = parseSource(value, "ownedUrlPrefixes");
+  if (/[?#]/.test(url.href) || !/[^/]/.test(url.pathname) || /%(?![a-f\d]{2})/i.test(url.pathname)) {
+    throw new Error("ownedUrlPrefixes에는 쿼리·프래그먼트 없는 유효한 계정 경로 URL을 입력하세요.");
+  }
+  return { origin: url.origin, path: comparablePath(url).replace(/\/$/, "") };
+}
+
 function observationDate(value, field) {
   const text = requiredText(value, field);
   const date = text.slice(0, 10);
@@ -64,7 +80,7 @@ function summarize(records, tracksCitations) {
   };
 }
 
-export function analyzeObservations({ brand, aliases = [], domains = [], observations = [] } = {}) {
+export function analyzeObservations({ brand, aliases = [], domains = [], ownedUrlPrefixes = [], observations = [] } = {}) {
   list(observations, "observations");
   const brandName = brand === undefined && !observations.length ? "" : requiredText(brand, "brand");
   const names = list(aliases, "aliases").map(name => requiredText(name, "aliases"));
@@ -74,6 +90,8 @@ export function analyzeObservations({ brand, aliases = [], domains = [], observa
     if (!terms.has(key)) terms.set(key, { name, pattern: termPattern(name) });
   }
   const hosts = [...new Set(list(domains, "domains").map(canonicalDomain))];
+  const prefixes = list(ownedUrlPrefixes, "ownedUrlPrefixes").map(ownedPrefix);
+  const tracksCitations = hosts.length > 0 || prefixes.length > 0;
   const engines = new Map();
 
   const records = observations.map((row, index) => {
@@ -89,15 +107,19 @@ export function analyzeObservations({ brand, aliases = [], domains = [], observa
     const urls = new Map();
     for (const value of list(row.sources, field + ".sources")) {
       const url = parseSource(value, field + ".sources");
-      urls.set(url.href, url.hostname.toLowerCase().replace(/\.$/, ""));
+      urls.set(url.href, url);
     }
     const matchedSources = [];
-    for (const [url, hostname] of urls) {
-      if (hosts.some(host => hostname === host || hostname.endsWith("." + host))) matchedSources.push(url);
+    for (const url of urls.values()) {
+      const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+      const path = comparablePath(url);
+      const owned = hosts.some(host => hostname === host || hostname.endsWith("." + host)) ||
+        prefixes.some(prefix => url.origin === prefix.origin && (path === prefix.path || path.startsWith(prefix.path + "/")));
+      if (owned) matchedSources.push(url.href);
     }
     const record = {
       engine, query, observedAt, mentioned: matchedTerms.length > 0, matchedTerms,
-      cited: hosts.length ? matchedSources.length > 0 : null,
+      cited: tracksCitations ? matchedSources.length > 0 : null,
       matchedSources, sources: [...urls.keys()],
     };
     if (row.evidenceUrl !== undefined) record.evidenceUrl = parseSource(row.evidenceUrl, field + ".evidenceUrl").href;
@@ -111,7 +133,7 @@ export function analyzeObservations({ brand, aliases = [], domains = [], observa
   });
 
   const byEngine = [...engines.values()].map(rows => ({
-    engine: rows[0].engine, ...summarize(rows, hosts.length > 0),
+    engine: rows[0].engine, ...summarize(rows, tracksCitations),
   }));
-  return { ...summarize(records, hosts.length > 0), byEngine, records };
+  return { ...summarize(records, tracksCitations), byEngine, records };
 }
