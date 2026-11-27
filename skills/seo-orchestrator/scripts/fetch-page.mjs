@@ -8,38 +8,45 @@ const unzipBrotli = promisify(brotliDecompress);
 const unzipDeflate = promisify(inflate);
 const unzipRawDeflate = promisify(inflateRaw);
 
-async function readHtml(response) {
+async function readBytes(response, maxBytes) {
   const chunks = [];
-  for await (const chunk of response) chunks.push(chunk);
-  let bytes = Buffer.concat(chunks);
-  if (!bytes.length) return "";
+  let length = 0;
+  for await (const chunk of response) {
+    length += chunk.length;
+    if (maxBytes && length > maxBytes) throw new Error(`응답이 점검 한도 ${maxBytes}바이트를 넘었습니다.`);
+    chunks.push(chunk);
+  }
+  let bytes = Buffer.concat(chunks, length);
+  if (!bytes.length) return bytes;
   const encodings = (response.headers["content-encoding"] || "").toLowerCase().split(",").map(s => s.trim());
+  const options = maxBytes ? { maxOutputLength: maxBytes } : {};
   for (const encoding of encodings.reverse()) {
-    if (encoding === "gzip" || encoding === "x-gzip") bytes = await unzipGzip(bytes);
-    else if (encoding === "br") bytes = await unzipBrotli(bytes);
+    if (encoding === "gzip" || encoding === "x-gzip") bytes = await unzipGzip(bytes, options);
+    else if (encoding === "br") bytes = await unzipBrotli(bytes, options);
     else if (encoding === "deflate") {
-      try { bytes = await unzipDeflate(bytes); }
+      try { bytes = await unzipDeflate(bytes, options); }
       catch (error) {
         if (error.code !== "Z_DATA_ERROR") throw error;
-        bytes = await unzipRawDeflate(bytes);
+        bytes = await unzipRawDeflate(bytes, options);
       }
     }
   }
-  return new TextDecoder().decode(bytes);
+  return bytes;
 }
 
-// Fetch's Headers joins repeated fields. Keep individual X-Robots-Tag lines:
-// a bot prefix applies to the rest of its line, but never to the next header.
-export async function fetchPage(url, userAgent) {
+// Keep individual X-Robots-Tag lines. A bot prefix never carries to the next header.
+export async function fetchResource(url, userAgent, { allowedOrigin, maxBytes, signal, accept = "text/html,*/*" } = {}) {
   const chain = [];
   let current = new URL(url);
   for (let redirects = 0; redirects <= 5; redirects++) {
+    if (!["https:", "http:"].includes(current.protocol)) throw new Error("HTTP(S) URL만 점검할 수 있습니다.");
     if (current.username || current.password) throw new Error("인증정보가 포함된 URL은 점검할 수 없습니다.");
+    if (allowedOrigin && current.origin !== allowedOrigin) throw new Error("사이트맵과 다른 출처(origin)로 연결되어 요청을 생략했습니다.");
     const client = current.protocol === "https:" ? https : http;
     const response = await new Promise((resolve, reject) => {
       const request = client.get(current, {
-        headers: { "user-agent": userAgent, accept: "text/html,*/*", "accept-encoding": "gzip, deflate" },
-        signal: AbortSignal.timeout(30_000),
+        headers: { "user-agent": userAgent, accept, "accept-encoding": "gzip, deflate" },
+        signal: signal || AbortSignal.timeout(30_000),
       }, resolve);
       request.on("error", reject);
     });
@@ -54,7 +61,12 @@ export async function fetchPage(url, userAgent) {
     for (let i = 0; i < response.rawHeaders.length; i += 2) {
       if (response.rawHeaders[i].toLowerCase() === "x-robots-tag") robotsHeaders.push(response.rawHeaders[i + 1]);
     }
-    return { status, headers: response.headers, robotsHeaders, html: await readHtml(response), chain, finalUrl: current.href };
+    return { status, headers: response.headers, robotsHeaders, bytes: await readBytes(response, maxBytes), chain, finalUrl: current.href };
   }
   throw new Error("리다이렉트 5회 초과");
+}
+
+export async function fetchPage(url, userAgent, options) {
+  const { bytes, ...page } = await fetchResource(url, userAgent, options);
+  return { ...page, html: new TextDecoder().decode(bytes) };
 }

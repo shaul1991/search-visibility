@@ -3,7 +3,7 @@ name: seo-orchestrator
 description: >-
   여러 검색·공유·AI 채널(Google, 네이버, Daum/카카오, Bing, Brave, DuckDuckGo, Apple, X, 카카오톡, Meta, ChatGPT·Perplexity·Claude 검색)을
   한 번에 맞추는 SEO 작업의 시작점. 대상 채널을 정하고 하위 Skill(google-search, naver-search, daum-search, other-search-engines,
-  ai-crawlers, structured-data, social-preview, indexnow, scaled-pages, browser-compat)을 순서대로 조합해 점검·구현·보고한다. "SEO 해줘", "검색 노출 점검", "구글이랑 네이버 둘 다", "SEO audit", "launch SEO checklist"
+  ai-crawlers, ai-observations, structured-data, social-preview, indexnow, scaled-pages, browser-compat)을 순서대로 조합해 점검·구현·보고한다. "SEO 해줘", "검색 노출 점검", "구글이랑 네이버 둘 다", "SEO audit", "launch SEO checklist"
   같은 요청에 사용. Entry point that combines search engine, AI crawler, social preview, structured data and browser skills.
 ---
 
@@ -19,10 +19,15 @@ description: >-
 | `daum-search` | Daum(카카오) 검색: Daum/Daum-Preview 로봇, 검색등록, 웹마스터도구 PIN, 연관 채널, 카카오톡 채널·카카오맵 |
 | `other-search-engines` | Bing(Edge·Copilot), Brave Search(Brave 브라우저), DuckDuckGo, Apple(Safari·Spotlight·Siri) |
 | `ai-crawlers` | ChatGPT·Perplexity·Claude·Meta AI·Apple·Google·Bing의 AI 검색·학습 크롤러 정책 |
+| `ai-observations` | 실제 답변별 브랜드 언급·소유 도메인 인용 관측, 질문·출처 기록 |
 | `social-preview` | Open Graph, X(Twitter) 카드, 카카오톡, Meta(Facebook·Instagram·Threads), Daum 미리보기 |
 | `indexnow` | IndexNow로 네이버·Bing 등에 변경 URL 알리기 |
 | `scaled-pages` | 지역·날짜·카테고리 조합 페이지를 대량으로 만들 때의 품질 기준(얇은 페이지·도어웨이 회피) |
 | `browser-compat` | Brave Shields·De-AMP, 파비콘·theme-color·manifest, 브라우저별 표시·측정 |
+
+## 여러 페이지와 검색 성과를 함께 볼 때
+
+이 스킬 폴더 안에서 `node scripts/visibility.mjs /절대/경로/config.json`을 실행합니다. 예를 들어 `{"targets":["index.html"],"expectIndexable":true}`는 설정 파일 옆의 HTML을 점검합니다. 사이트맵 URL은 `sitemap`, Search Console CSV는 `searchConsole`, 수집한 답변 배열 또는 JSON 파일은 `observations`에 지정합니다. 답변을 넣을 때는 `brand`와 소유 도메인 `domains`도 지정합니다. 같이 수집한 기술 진단과 검색 성과를 HTML·JSON으로 제공합니다. 비율을 설명할 때에는 입력한 기간과 표본 수를 함께 제시합니다. [입력 예제와 실행 방법](https://github.com/shaul1991/search-visibility/blob/main/docs/workbench.ko.md)
 
 ## 다른 Skill과의 경계
 

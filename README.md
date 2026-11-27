@@ -6,6 +6,18 @@ Search Visibility는 웹사이트가 일반 검색 결과와 AI 답변에서 어
 - 각 규칙은 공식 문서를 2026-11-04에 직접 읽고 요약한 것이며, 절마다 원문 링크가 있습니다. 출처 목록은 [REFERENCES.md](REFERENCES.md).
 - Google, NAVER, Kakao, Microsoft, Brave, Apple, Meta, X, OpenAI, Perplexity, Anthropic 등과 관련 없는 비공식 저장소입니다.
 
+## 내 사이트의 검색 가시성 확인하기
+
+사이트의 색인·크롤링 문제, Google 검색 노출·클릭, AI 답변의 브랜드 언급·출처 인용을 한 보고서에서 확인할 수 있습니다. **Node.js 18 이상**으로 실행합니다. CLI에는 외부 패키지, 서비스 계정, 유료 API 키가 필요하지 않습니다.
+
+```bash
+git clone https://github.com/shaul1991/search-visibility.git
+cd search-visibility
+npm run demo
+```
+
+출력된 `index.html`을 브라우저에서 열면 됩니다. 실행 전에 화면을 보려면 [샘플 HTML 보고서를 다운로드](https://github.com/shaul1991/search-visibility/releases/download/v0.5.0/search-visibility-demo.html)해 여세요. 예제에는 로컬 HTML 두 개, 합성 검색 성과 CSV, 합성 답변 세 건이 들어 있습니다. 실제 사이트를 점검할 때는 URL 목록이나 사이트맵을 지정하세요. 본인의 Search Console 내보내기와 직접 수집한 답변을 선택적으로 추가할 수 있습니다. [실제 데이터로 실행하기](docs/workbench.ko.md) · [참고한 공개 프로젝트 21개](docs/landscape.ko.md)
+
 ## 구성
 
 필요한 스킬만 골라 설치할 수 있습니다. 여러 채널을 함께 점검할 때는 `seo-orchestrator`로 시작하고, 한 채널의 문제를 알고 있다면 해당 스킬을 바로 실행하세요. 예를 들어 네이버 소유 확인은 `naver-search`, AI 검색의 크롤러 접근과 답변 인용 확인 절차는 `ai-crawlers`가 다룹니다.
@@ -18,6 +30,7 @@ Search Visibility는 웹사이트가 일반 검색 결과와 AI 답변에서 어
 | [`daum-search`](skills/daum-search/SKILL.md) | Daum(카카오): Daum/Daum-Preview 로봇, 검색등록, 웹마스터도구 PIN, 웹문서 미노출 점검, 연관 채널, 카카오톡 채널·카카오맵 |
 | [`other-search-engines`](skills/other-search-engines/SKILL.md) | Bing(Edge·Copilot, 2027 AI 학습·그라운딩 설정), Brave Search(Brave 브라우저), DuckDuckGo, Apple(Safari·Spotlight·Siri) |
 | [`ai-crawlers`](skills/ai-crawlers/SKILL.md) | **AI 검색 노출 설정**: ChatGPT·Claude·Grok·Gemini·Copilot·Perplexity·Meta AI·Apple·Mistral별 근거 색인과 필요한 robots.txt·WAF/CDN 설정, 학습 차단과의 구분 |
+| [`ai-observations`](skills/ai-observations/SKILL.md) | 질문·엔진별 AI 답변에서 브랜드 언급과 소유 도메인 인용을 따로 집계하고 출처를 확인 |
 | [`structured-data`](skills/structured-data/SKILL.md) | JSON-LD 템플릿(Event·WebSite·Organization+sameAs·BreadcrumbList·ItemList)과 Google·네이버 지원 차이 |
 | [`social-preview`](skills/social-preview/SKILL.md) | Open Graph·X 카드·카카오톡(스크랩 서버 IP·캐시 초기화)·Meta(Facebook·Instagram·Threads 크롤러 요구사항)·Daum 미리보기 |
 | [`indexnow`](skills/indexnow/SKILL.md) | 네이버·Bing 등에 변경 URL 알리기(키 파일, GET/POST, 응답 코드) |

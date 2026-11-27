@@ -1,0 +1,9 @@
+{
+  "sample": true,
+  "brand": "예시 사이트",
+  "aliases": ["Example Events"],
+  "domains": ["example.com"],
+  "targets": ["../../tests/fixtures/good.html", "../../tests/fixtures/bad.html"],
+  "searchConsole": "queries.csv",
+  "observations": "answers.json"
+}
