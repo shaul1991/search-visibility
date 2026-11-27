@@ -41,12 +41,48 @@ Use the [before-and-after AI citation guide](docs/ai-comparison.en.md) to compar
 
 For Korean search, use the [Naver, Daum and AI Briefing measurement guide](docs/korea-search.en.md).
 
-## Install skills or contribute
+## Install skills
 
 To install the audit and citation skills for Claude Code and Codex, run this in the project where you use the agent.
 
 ```sh
 npx skills add shaul1991/search-visibility -s seo-orchestrator ai-observations -a claude-code -a codex
 ```
+
+### Run the CLI from a single installed skill
+
+From your project root, install just `seo-orchestrator` with the [skills CLI](https://github.com/vercel-labs/skills).
+
+```sh
+npx skills add shaul1991/search-visibility -s seo-orchestrator -a claude-code -a codex -y
+```
+
+Save this synthetic sample as `visibility.config.json` in your project root. Then run the installed script with Node.js 18 or later.
+
+```json
+{
+  "brand": "Example Studio",
+  "sample": true,
+  "domains": ["bücher.example"],
+  "observations": [
+    {
+      "engine": "Synthetic",
+      "query": "어떤 서점이 있나요?",
+      "locale": "ko-KR",
+      "observedAt": "2026-01-15T12:00:00+09:00",
+      "answer": "Example Studio를 살펴보세요.",
+      "sources": ["https://xn--bcher-kva.example/books"]
+    }
+  ]
+}
+```
+
+```sh
+node .agents/skills/seo-orchestrator/scripts/visibility.mjs ./visibility.config.json
+```
+
+The report shows one owned citation in one observed answer. The Unicode domain in `domains` matches the Punycode host in `sources`. The Korean question and explicit UTC offset are sample inputs. This command analyzes the supplied answer locally without contacting a search engine or AI platform. In a manual Claude Code installation, use the script under `.claude/skills/seo-orchestrator/`.
+
+## Contribute
 
 Regional search guidance, translated examples, and reproducible parser cases are welcome. For a locale-specific CSV issue, include synthetic headers and a representative row. Run `npm test` from the repository root when changing code. [Skill catalog](README.md#구성) · [License](LICENSE)

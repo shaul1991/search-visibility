@@ -99,6 +99,40 @@ Claude Code 플러그인:
 
 직접 복사: `skills/<이름>/` 폴더를 프로젝트의 `.claude/skills/`(Claude Code) 또는 `.agents/skills/`(Codex)에 복사합니다.
 
+### 개별 설치한 스킬에서 CLI 실행
+
+프로젝트 루트에서 `seo-orchestrator`만 설치합니다.
+
+```sh
+npx skills add shaul1991/search-visibility -s seo-orchestrator -a claude-code -a codex -y
+```
+
+아래 합성 데이터를 프로젝트 루트의 `visibility.config.json`에 저장하고 Node.js 18 이상으로 설치된 스크립트를 실행합니다.
+
+```json
+{
+  "brand": "Example Studio",
+  "sample": true,
+  "domains": ["bücher.example"],
+  "observations": [
+    {
+      "engine": "Synthetic",
+      "query": "어떤 서점이 있나요?",
+      "locale": "ko-KR",
+      "observedAt": "2026-01-15T12:00:00+09:00",
+      "answer": "Example Studio를 살펴보세요.",
+      "sources": ["https://xn--bcher-kva.example/books"]
+    }
+  ]
+}
+```
+
+```sh
+node .agents/skills/seo-orchestrator/scripts/visibility.mjs ./visibility.config.json
+```
+
+보고서는 관측 답변 1건 중 소유 출처를 인용한 답변 1건을 집계합니다. `domains`의 유니코드 도메인은 `sources`의 퓨니코드 호스트와 일치합니다. 한국어 질문과 UTC 오프셋은 입력 예시입니다. 이 명령은 제공한 답변을 로컬에서 집계하므로 검색엔진이나 AI 플랫폼에 접속하지 않습니다. Claude Code에 직접 복사했다면 `.claude/skills/seo-orchestrator/` 아래의 스크립트를 실행합니다.
+
 ## 사용 예
 
 ```text

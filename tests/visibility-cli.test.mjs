@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
@@ -67,4 +67,24 @@ test("CLI attributes citations to the selected account on a shared international
   assert.equal(ai.records[0].matchedSources[0], new URL(account + "/guide").href);
   const html = await readFile(join(cwd, "report/index.html"), "utf8");
   assert.match(html, /소유 출처 인용률/);
+});
+
+test("both CLIs run through a symlinked skill directory", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-installed-"));
+  t.after(() => rm(cwd, {recursive: true, force: true}));
+  const skillLink = join(cwd, "seo-orchestrator");
+  await symlink(dirname(dirname(cli)), skillLink, "junction");
+
+  const report = spawnSync(process.execPath, [
+    join(skillLink, "scripts", "visibility.mjs"), demo, "--out", "report",
+  ], {cwd, encoding: "utf8", timeout: 15000});
+  assert.equal(report.status, 0, report.stderr);
+  assert.equal(JSON.parse(await readFile(join(cwd, "report", "report.json"), "utf8")).sample, true);
+
+  const page = fileURLToPath(new URL("./fixtures/good.html", import.meta.url));
+  const audit = spawnSync(process.execPath, [
+    join(skillLink, "scripts", "seo-check.mjs"), page, "--json",
+  ], {cwd, encoding: "utf8", timeout: 15000});
+  assert.equal(audit.status, 0, audit.stderr);
+  assert.ok(JSON.parse(audit.stdout).results.length);
 });
