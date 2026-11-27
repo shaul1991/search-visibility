@@ -43,6 +43,8 @@ Use the [before-and-after AI citation guide](docs/ai-comparison.en.md) to compar
 
 For Korean search, use the [Naver, Daum and AI Briefing measurement guide](docs/korea-search.en.md).
 
+Use the [Bing and Copilot citation guide](docs/bing-ai.en.md) to compare Bing Webmaster Tools metrics and locally collected answers.
+
 ## Install skills
 
 To install the audit and citation skills for Claude Code and Codex, run this in the project where you use the agent.
