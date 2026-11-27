@@ -1,0 +1,47 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+
+const cli = fileURLToPath(new URL("../skills/seo-orchestrator/scripts/visibility.mjs", import.meta.url));
+const demo = fileURLToPath(new URL("../examples/demo/config.json", import.meta.url));
+
+function run(cwd, ...args) {
+  return spawnSync(process.execPath, [cli, ...args], {cwd, encoding:"utf8", timeout:15000});
+}
+
+test("offline demonstration produces both formats, gates findings and preserves previous output", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-demo-"));
+  t.after(() => rm(cwd, {recursive:true, force:true}));
+  const first = run(cwd, demo, "--out", "report");
+  assert.equal(first.status, 0, first.stderr);
+  const json = await readFile(join(cwd, "report", "report.json"), "utf8");
+  const report = JSON.parse(json);
+  assert.equal(report.schemaVersion, 1);
+  assert.equal(report.sample, true);
+  assert.equal(report.site.pages.length, 2);
+  assert.deepEqual([report.ai.sampleSize, report.ai.mentions, report.ai.citations], [3,2,1]);
+  assert.deepEqual([report.searchPerformance.clicks, report.searchPerformance.impressions], [20,350]);
+  assert.match(await readFile(join(cwd, "report", "index.html"), "utf8"), /합성 예시/);
+  assert.equal(run(cwd, demo, "--out", "report").status, 2);
+  assert.equal(await readFile(join(cwd, "report", "report.json"), "utf8"), json);
+  assert.equal(run(cwd, demo, "--out", "strict", "--fail-on-findings").status, 1);
+});
+
+test("collection failures retain partial results, invalid configuration creates no report", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-partial-"));
+  t.after(() => rm(cwd, {recursive:true, force:true}));
+  await writeFile(join(cwd, "page.html"), "<title>Test</title>");
+  await writeFile(join(cwd, "site.json"), JSON.stringify({targets:["missing.html","page.html"]}));
+  assert.equal(run(cwd, "site.json", "--out", "partial").status, 2);
+  const report = JSON.parse(await readFile(join(cwd, "partial/report.json"), "utf8"));
+  assert.ok(report.site.pages[0].error);
+  assert.ok(report.site.pages[1].results.length);
+  assert.equal(report.ai.mentionRate, null);
+  await writeFile(join(cwd, "broken.json"), JSON.stringify({serchConsole:"typo.csv"}));
+  assert.equal(run(cwd, "broken.json", "--out", "invalid").status, 2);
+  await assert.rejects(readFile(join(cwd, "invalid/index.html")), {code:"ENOENT"});
+});

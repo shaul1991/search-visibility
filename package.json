@@ -1,12 +1,14 @@
 {
   "name": "seo-skills",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
-  "description": "Search Visibility의 검색·AI 가시성 스킬과 페이지 점검 CLI",
+  "description": "사이트 진단·검색 성과·AI 답변 인용을 한 번에 확인하는 무료 로컬 CLI와 Agent Skills",
   "type": "module",
   "license": "MIT",
   "engines": { "node": ">=18" },
   "scripts": {
+    "visibility": "node skills/seo-orchestrator/scripts/visibility.mjs",
+    "demo": "node skills/seo-orchestrator/scripts/visibility.mjs examples/demo/config.json",
     "check": "node skills/seo-orchestrator/scripts/seo-check.mjs",
     "test": "node --test tests/*.test.mjs"
   }

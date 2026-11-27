@@ -1,0 +1,23 @@
+[
+  {
+    "engine": "예시 엔진 A",
+    "query": "12월 행사 일정은 어디에서 확인할 수 있나요?",
+    "observedAt": "2026-11-25",
+    "answer": "예시 사이트에서 행사별 날짜와 등록 상태를 확인할 수 있습니다.",
+    "sources": ["https://example.com/events/sample-2026"]
+  },
+  {
+    "engine": "예시 엔진 B",
+    "query": "12월 행사 일정은 어디에서 확인할 수 있나요?",
+    "observedAt": "2026-11-25",
+    "answer": "예시 사이트와 지역 행사 달력을 참고하세요.",
+    "sources": ["https://calendar.example.org/winter"]
+  },
+  {
+    "engine": "예시 엔진 A",
+    "query": "행사 사전 등록은 어떻게 하나요?",
+    "observedAt": "2026-11-26",
+    "answer": "행사 주최 측의 등록 안내를 따르세요.",
+    "sources": []
+  }
+]

@@ -9,12 +9,12 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseHtml, checkCanonical, httpUrl } from "./html.mjs";
-import { fetchPage } from "./fetch-page.mjs";
+import { fetchPage, fetchResource } from "./fetch-page.mjs";
 import { indexingRules, reportIndexing } from "./indexing.mjs";
 
 export { parseHtml };
 
-const UA = "seo-skills-check/0.1 (+https://github.com/shaul1991/search-visibility)";
+export const UA = "seo-skills-check/0.1 (+https://github.com/shaul1991/search-visibility)";
 
 // ---------- JSON-LD ----------
 
@@ -274,9 +274,17 @@ export function checkPage(p, add, baseUrl, { robotsHeaders = [], expectIndexable
   return { ogImage: p.meta["og:image"], xImg, pageNoindex };
 }
 
-async function checkImage(url, add) {
+async function fetchAuxiliary(url, network) {
+  if (!network) return fetch(url, { headers: { "user-agent": UA } });
+  const resource = await fetchResource(url, UA, { ...network, accept: "*/*" });
+  // Fetch's Response API is also used by the standalone checker.
+  const emptyBody = [204, 205, 304].includes(resource.status);
+  return new Response(emptyBody ? null : resource.bytes, { status: resource.status, headers: resource.headers });
+}
+
+async function checkImage(url, add, network) {
   try {
-    const res = await fetch(url, { headers: { "user-agent": UA } });
+    const res = await fetchAuxiliary(url, network);
     if (!res.ok) return add("FAIL", "공유", "og:image 응답", `HTTP ${res.status}`, "social-preview");
     const buf = Buffer.from(await res.arrayBuffer());
     const size = imageSize(buf);
@@ -288,7 +296,7 @@ async function checkImage(url, add) {
       if (size.w <= 150 || size.h <= 150) add("WARN", "네이버", "og:image 크기", "150×150 초과 필요", "naver-search");
       if (Math.max(size.w / size.h, size.h / size.w) > 3) add("WARN", "네이버", "og:image 비율", "가로:세로 3:1 초과", "naver-search");
     }
-  } catch (e) { add("FAIL", "공유", "og:image 응답", String(e.message).slice(0, 100), "social-preview"); }
+  } catch (e) { add(network ? "WARN" : "FAIL", "공유", "og:image 응답", String(e.message).slice(0, 100), "social-preview"); }
 }
 
 // [robots.txt 이름, 차단 시 수준, Skill, 설명]
@@ -319,9 +327,9 @@ export const ROBOT_AGENTS = [
   ["__usage_ai-training", "INFO", "ai-crawlers", "Microsoft AI 학습 제외(2027-02-01부터 반영)"],
 ];
 
-async function checkRobots(url, add, pageNoindex = false, expectIndexable = false) {
+async function checkRobots(url, add, pageNoindex = false, expectIndexable = false, network) {
   try {
-    const res = await fetch(new URL("/robots.txt", url), { headers: { "user-agent": UA } });
+    const res = await fetchAuxiliary(new URL("/robots.txt", url), network);
     const ct = res.headers.get("content-type") || "";
     if (res.status === 429) return add("WARN", "공통", "robots.txt", "HTTP 429 — 요청량 제한으로 규칙을 확인하지 못함. Google의 크롤링이 지연될 수 있어 재확인 필요", "google-search");
     if (res.status >= 500) return add("FAIL", "공통", "robots.txt", `HTTP ${res.status} — 네이버는 5xx를 '모두 금지'로 해석`, "naver-search");
@@ -365,12 +373,12 @@ async function checkRobots(url, add, pageNoindex = false, expectIndexable = fals
   } catch (e) { add("WARN", "공통", "robots.txt", `가져오기 실패: ${String(e.message).slice(0, 80)}`, "google-search"); }
 }
 
-export async function run(target, { expectIndexable = false } = {}) {
+export async function run(target, { expectIndexable = false, network } = {}) {
   const results = [];
   const add = (level, channel, item, detail, skill) => results.push({ level, channel, item, detail, skill });
   let html, baseUrl = null;
   if (/^https?:\/\//i.test(target)) {
-    const page = await fetchPage(target, UA);
+    const page = await fetchPage(target, UA, network);
     const { status, chain, finalUrl } = page;
     baseUrl = finalUrl;
     if (chain.length > 1) add("INFO", "공통", "리다이렉트", chain.map((c) => `${c.status} ${c.url}`).join(" → ") + ` → ${status}`, "google-search");
@@ -379,14 +387,16 @@ export async function run(target, { expectIndexable = false } = {}) {
     html = page.html;
     const enc = page.headers["content-encoding"] || "";
     if (!/gzip|deflate|br/i.test(enc)) add("INFO", "공유", "압축", "HTML 응답에 gzip/deflate 없음 — Meta 크롤러는 gzip·deflate 지원 요구", "social-preview");
-    const lastOg = Math.max(...[...html.matchAll(/<meta\b[^>]*property\s*=\s*["']og:/gi)].map((m) => Buffer.byteLength(html.slice(0, m.index))), -1);
-    if (lastOg > 1024 * 1024) add("WARN", "공유", "og 위치", `og 태그가 HTML ${Math.round(lastOg / 1024)}KB 지점 — Meta는 첫 1MB만 읽음`, "social-preview");
+    let lastOgIndex = -1;
+    for (const tag of html.matchAll(/<meta\b[^>]*property\s*=\s*["']og:/gi)) lastOgIndex = tag.index;
+    const lastOgByte = lastOgIndex < 0 ? 0 : Buffer.byteLength(html.slice(0, lastOgIndex));
+    if (lastOgByte > 1024 * 1024) add("WARN", "공유", "og 위치", `og 태그가 HTML ${Math.round(lastOgByte / 1024)}KB 지점 — Meta는 첫 1MB만 읽음`, "social-preview");
     if (/http-equiv\s*=\s*["']?refresh/i.test(html)) add("WARN", "네이버", "meta refresh", "있음 — 네이버 소유 확인·수집에서 해석하지 않음. HTTP 리다이렉트 사용", "naver-search");
     const p = parseHtml(html);
     const { ogImage, pageNoindex } = checkPage(p, add, baseUrl, { robotsHeaders: page.robotsHeaders, expectIndexable });
     checkJsonLd(p.jsonLd, add);
-    if (ogImage && /^https?:/i.test(ogImage)) await checkImage(ogImage, add);
-    await checkRobots(new URL(baseUrl), add, pageNoindex, expectIndexable);
+    if (ogImage && /^https?:/i.test(ogImage)) await checkImage(ogImage, add, network);
+    await checkRobots(new URL(baseUrl), add, pageNoindex, expectIndexable, network);
   } else {
     html = await readFile(target, "utf8");
     const p = parseHtml(html);
