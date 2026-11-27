@@ -64,22 +64,22 @@ export function parseHtml(html) {
     const { name, closing, attrs, content, text } = token;
     if (name === "template" || name === "math" || name === "svg") {
       if (closing && name === inert.at(-1)) inert.pop();
-      else if (!closing && (name === "template" || !token.selfClosing)) {
+      else if (!closing) {
         if (!inert.length && name !== "template") inHead = false;
-        inert.push(name);
+        if (name === "template" || !token.selfClosing) inert.push(name);
       }
       continue;
     }
     if (inert.length) continue;
     if (text !== undefined) {
-      if (text.trim()) inHead = false;
+      if (inHead && /[^\t\n\f\r ]/.test(decodeEntities(text))) inHead = false;
       if (!inHead) bodyText.push(text);
       if (heading !== null) heading += text;
       continue;
     }
     if (closing) {
       if (name === "head") afterHead = true;
-      if (name === "body" || name === "html") inHead = false;
+      if (name === "body" || name === "html" || name === "br") inHead = false;
       if (name === "h1" || name === "body") finishHeading();
       continue;
     }

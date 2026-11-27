@@ -23,7 +23,10 @@ test("canonical belongs in the document head, including when head tags are omitt
   assert.deepEqual(results("<!doctype html><html><title>t</title>" + link(url) + "<p>body</p>"), []);
   const afterHead = '<html><head><title>t</title></head>\n<base href="https://example.org/"><meta name="robots" content="index">';
   assert.deepEqual(results(afterHead + link(url) + "<body><p>x</p></body>"), []);
-  assert.ok(results(afterHead + "<p>x</p>" + link(url)).some(r => r.level === "FAIL"));
+  for (const bodyStart of ["<p>x</p>", "<svg/>", "<math/>", "<svg></svg>", "&nbsp;", "</br>"]) {
+    assert.ok(results(afterHead + bodyStart + link(url)).some(r => r.level === "FAIL"), bodyStart);
+  }
+  for (const whitespace of ["\n", "&#x20;"]) assert.deepEqual(results(afterHead + whitespace + link(url)), []);
   for (const start of ["<body>", "<main>", "body text ", "</head><body>"]) {
     assert.ok(results(start + link(url)).some(r => r.level === "FAIL" && r.detail.includes("<head>")));
   }
