@@ -49,7 +49,7 @@ npm run visibility -- ./config.json
 
 ### Google Search Console 실적
 
-본인이 접근할 수 있는 속성에서 **검색 결과 실적 → 기간과 필터 선택 → 내보내기 → CSV**를 선택합니다. 압축을 풀고 검색어·페이지·날짜 중 한 차원의 표 하나를 `searchConsole`로 지정하세요. 영어·한국어 헤더를 인식합니다. 클릭수와 노출수를 읽고 CTR은 **선택한 행의 클릭수 합 ÷ 노출수 합**으로 계산합니다. 페이지 표와 검색어 표에는 같은 실적이 겹칠 수 있어 한 실행에 한 표만 입력합니다. 날짜나 검색 유형 등의 필터를 비교할 때는 원본 내보내기의 기간과 필터도 보관하세요. 검색어 익명 처리와 내보내기 행 제한 때문에 합계가 Search Console 상단 수치와 다를 수 있습니다. [Google 실적 보고서](https://support.google.com/webmasters/answer/7576553) · [데이터 내보내기](https://support.google.com/webmasters/answer/12919797)
+본인이 접근할 수 있는 속성에서 **검색 결과 실적 → 기간과 필터 선택 → 내보내기 → CSV**를 선택합니다. 압축을 풀고 검색어·페이지·날짜 중 한 차원의 표 하나를 `searchConsole`로 지정하세요. 영어·한국어 헤더를 인식합니다. 클릭수와 노출수를 읽고 CTR은 **선택한 행의 클릭수 합 ÷ 노출수 합**으로 계산합니다. 페이지 표와 검색어 표에는 같은 실적이 겹칠 수 있어 한 실행에 한 표만 입력합니다. 날짜나 검색 유형 등의 필터를 비교할 때는 원본 내보내기의 기간과 필터도 보관하세요. 검색어 익명 처리와 내보내기 행 제한 때문에 합계가 Search Console 상단 수치와 다를 수 있습니다. [Google 실적 보고서](https://support.google.com/webmasters/answer/7576553) · [데이터 내보내기](https://support.google.com/webmasters/answer/12919797) · [현지화된 CSV 가져오기](search-console.ko.md)
 
 ### AI 답변 관측
 
