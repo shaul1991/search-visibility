@@ -1,0 +1,23 @@
+{
+  "sample": true,
+  "brand": "Example Studio",
+  "domains": ["bücher.example"],
+  "observations": [
+    {
+      "engine": "google-ai-overviews",
+      "query": "독일어 그림책을 어디서 찾을 수 있나요?",
+      "locale": "ko-KR",
+      "observedAt": "2026-11-14T00:30:00+09:00",
+      "answer": "Example Studio의 독일어 그림책 목록을 확인해 보세요.",
+      "sources": ["https://xn--bcher-kva.example/ko/%EB%8F%84%EC%84%9C"]
+    },
+    {
+      "engine": "google-ai-mode",
+      "query": "Où trouver des albums jeunesse en allemand ?",
+      "locale": "fr-CA",
+      "observedAt": "2026-11-13T07:30:00-08:00",
+      "answer": "Les bibliothèques locales proposent parfois des albums en allemand.",
+      "sources": ["https://library.example/fr/allemand"]
+    }
+  ]
+}
