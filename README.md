@@ -22,7 +22,7 @@ Google·네이버·Daum(카카오)·Bing·Brave·DuckDuckGo·Apple 검색, ChatG
 | [`scaled-pages`](skills/scaled-pages/SKILL.md) | 지역·월·카테고리 조합 페이지를 대량으로 만들 때 색인·noindex·canonical 기준 |
 | [`browser-compat`](skills/browser-compat/SKILL.md) | Brave Shields·De-AMP, 파비콘·apple-touch-icon·theme-color·manifest, 분석 과소 집계 |
 
-점검 스크립트 [`skills/seo-orchestrator/scripts/seo-check.mjs`](skills/seo-orchestrator/scripts/seo-check.mjs)는 의존성 없는 Node 18+ 스크립트로, 한 페이지의 title·description·canonical·robots·og·twitter·파비콘·JSON-LD와 (URL이면) 리다이렉트·압축·og 위치·og:image 크기, 그리고 robots.txt에서 검색·공유·AI 크롤러 18종의 차단 여부를 확인합니다.
+점검 스크립트는 의존성 없이 Node 18 이상에서 실행됩니다. HTML 한 페이지의 title·description·canonical·robots·공유 카드·파비콘·JSON-LD를 검사합니다. URL을 입력하면 리다이렉트와 최종 응답 헤더, robots.txt, Open Graph 이미지도 확인합니다. [점검 스크립트](skills/seo-orchestrator/scripts/seo-check.mjs)
 
 ### 조사하면서 확인한 것(2026-11-04)
 
@@ -95,9 +95,15 @@ Codex에서는 `$seo-orchestrator ...`처럼 부릅니다.
 ```bash
 node skills/seo-orchestrator/scripts/seo-check.mjs https://example.com/events/123
 node skills/seo-orchestrator/scripts/seo-check.mjs ./out/index.html --json
+node skills/seo-orchestrator/scripts/seo-check.mjs https://example.com/events/123 --expect-indexable
 ```
 
-결과는 ❌(FAIL)·⚠️(WARN)·ℹ️(INFO) 표이며, FAIL이 있으면 종료 코드 1입니다. 서버 HTML 한 페이지만 보므로 색인·순위·JS 렌더링 결과는 Search Console·서치어드바이저 URL 검사로 따로 확인합니다.
+**공개 전 점검**에는 색인하려는 페이지에 `--expect-indexable`을 붙입니다. 기본 점검에서 경고하는 `noindex`와 `none`을 이 모드에서는 FAIL로 보고합니다. FAIL이 있으면 종료 코드는 1입니다.
+
+- URL 검사에서는 리다이렉트를 따라간 최종 URL의 **경로와 쿼리 문자열**에 robots.txt 규칙을 적용합니다. 색인 지시는 최종 응답의 `X-Robots-Tag`와 HTML의 robots 메타 태그를 함께 확인합니다. 같은 대상에 여러 지시가 있으면 그중 색인을 제한하는 지시도 보고합니다.
+- URL과 로컬 HTML 모두 `<head>`의 canonical 선언을 확인해 대상 URL의 충돌과 `<body>`에 잘못 넣은 선언을 보고합니다. 로컬 파일에서는 HTML 안의 지시만 검사하므로 배포 후 URL로 다시 점검해야 CDN·서버가 추가한 헤더와 robots.txt까지 확인할 수 있습니다.
+
+크롤링 허용 여부는 점검 시점의 규칙을 해석한 결과입니다. 실제 색인 상태는 Search Console·서치어드바이저에서 확인합니다. Google이 선택한 대표 URL은 Search Console의 URL 검사에서 확인할 수 있습니다.
 
 ## 최신성
 
@@ -109,7 +115,7 @@ node skills/seo-orchestrator/scripts/seo-check.mjs ./out/index.html --json
 npm test   # node --test, 의존성 없음
 ```
 
-`tests/fixtures/bad.html`에 일부러 넣은 문제(제목 키워드 반복, 상대 경로 og:image, 본문 없는 SPA, fragment 링크, 잘못된 JSON-LD, 주소 없는 Event, body 안 소유 확인 메타 등)를 스크립트가 잡는지 확인합니다.
+PR과 `main` 푸시에서는 GitHub Actions가 Node 18·24로 같은 테스트를 실행합니다. `tests/fixtures/bad.html`에는 제목 키워드 반복, 상대 경로 og:image, 잘못된 JSON-LD 등 점검기가 찾아야 할 예시가 들어 있습니다.
 
 ## 라이선스
 

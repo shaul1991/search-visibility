@@ -72,9 +72,12 @@ SEO(발견·색인·표시·AI 검색 노출)는 이 저장소가 맡습니다. 
 node <skill 폴더>/scripts/seo-check.mjs https://example.com/page      # URL (robots.txt·사이트맵 위치도 확인)
 node <skill 폴더>/scripts/seo-check.mjs ./out/events/123.html         # 로컬 HTML
 node <skill 폴더>/scripts/seo-check.mjs --json https://example.com/   # 기계용 출력
+node <skill 폴더>/scripts/seo-check.mjs --expect-indexable https://example.com/page
 ```
 
-스크립트는 단일 페이지의 마크업만 봅니다. 순위·색인 여부·렌더링 결과는 알 수 없습니다. Search Console·서치어드바이저의 URL 검사로 따로 확인합니다.
+- 색인할 공개 페이지는 `--expect-indexable`로 검사합니다. 일반 점검에서 경고로 남기는 `noindex`와 `none`을 이 모드에서는 FAIL로 처리합니다. 미리보기·검색 제외 페이지는 기본 모드로 검사해 의도한 제한인지 확인합니다.
+- URL을 입력하면 최종 URL의 경로·쿼리에 대해 robots.txt의 크롤러별 접근 규칙을 확인합니다. 색인 지시는 최종 HTTP 응답의 `X-Robots-Tag`와 HTML의 robots 메타를 함께 살펴보고, 공통 지시인지 특정 봇에 적용되는지 결과에 적습니다. 검색엔진의 실제 색인 상태는 Search Console·서치어드바이저의 URL 검사로 확인합니다.
+- 로컬 빌드 파일로는 HTML 메타와 canonical을 점검할 수 있습니다. 같은 대상의 메타가 여러 개면 색인을 제한하는 지시를 확인합니다. canonical은 `<head>`의 선언을 기준으로 삼고 서로 다른 대상을 지정했거나 `<body>`에 둔 선언을 보고합니다. 배포 후 URL로 다시 실행해 서버가 보낸 헤더와 robots.txt도 확인합니다.
 
 ## 4. 보고 형식
 
