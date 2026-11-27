@@ -5,8 +5,7 @@
 // 순위·색인 여부·JS 렌더링 결과는 알 수 없습니다. 서버가 준 HTML만 봅니다.
 
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { isCliEntry } from "./cli-entry.mjs";
 
 import { parseHtml, checkCanonical, httpUrl } from "./html.mjs";
 import { fetchPage, fetchResource } from "./fetch-page.mjs";
@@ -430,8 +429,7 @@ function toMarkdown({ target, checkedAt, results }) {
   ].join("\n");
 }
 
-const isMain = Boolean(process.argv[1]) && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-if (isMain) {
+if (isCliEntry(import.meta.url)) {
   const args = process.argv.slice(2);
   const json = args.includes("--json");
   const target = args.find((a) => !a.startsWith("--"));

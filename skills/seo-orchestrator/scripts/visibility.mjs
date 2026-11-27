@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, mkdtemp, readFile, rename, rm, rmdir, stat, writeFile } from "node:fs/promises";
 import { dirname, basename, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { isCliEntry } from "./cli-entry.mjs";
 import { parseArgs } from "node:util";
 import { analyzeObservations } from "./observations.mjs";
 import { parseSearchPerformance } from "./search-performance.mjs";
@@ -95,7 +95,7 @@ async function main() {
   return values["fail-on-findings"] && failed ? 1 : 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+if (isCliEntry(import.meta.url)) {
   main().then(code => { process.exitCode = code; }).catch(error => {
     console.error(error.message);
     process.exitCode = 2;
