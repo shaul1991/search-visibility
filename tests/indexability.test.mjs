@@ -1,11 +1,10 @@
-import { listenOnLoopback } from "./loopback.mjs";
+import { startHttpFixture } from "./loopback.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { gzipSync } from "node:zlib";
@@ -45,32 +44,38 @@ test("scoped header lines do not leak to later lines or unrelated engines", () =
   assert.ok(reportsFor("", ["bingbot: all", "none"]).pageNoindex);
 });
 
-test("CLI reads the final response headers, preserves repeats, and only gates noindex in public mode", async t => {
-  const server = createServer((req, res) => {
-    if (req.url === "/old") {
-      res.writeHead(301, { location: "/article", "x-robots-tag": "applebot: none" }).end();
-    } else if (req.url === "/robots.txt") {
-      res.end("User-agent: *\nAllow: /\n");
-    } else if (req.url === "/cover") {
-      res.end(Buffer.alloc(5200));
-    } else {
-      const html = good.replace("https://example.com/og/sample-2026.jpg", origin + "/cover");
-      res.writeHead(200, { "Content-Encoding": "gzip", "X-Robots-Tag": ["bingbot: index", "noindex"] });
-      res.end(gzipSync(html));
+test("URL checks follow redirects, read gzip and repeated headers, and gate noindex in public mode", async t => {
+  const { origin, tcp } = await startHttpFixture(t, (url) => {
+    switch (url.pathname) {
+      case "/old": return { status: 301, headers: { location: "/article", "x-robots-tag": "applebot: none" } };
+      case "/robots.txt": return { body: "User-agent: *\nAllow: /\n" };
+      case "/cover": return { body: Buffer.alloc(5200) };
+      case "/article": {
+        const html = good.replace("https://example.com/og/sample-2026.jpg", url.origin + "/cover");
+        return {
+          headers: { "Content-Encoding": "gzip", "X-Robots-Tag": ["bingbot: index", "noindex"] },
+          body: gzipSync(html),
+        };
+      }
+      default: return { status: 404 };
     }
   });
-  const origin = await listenOnLoopback(server, t);
-  if (!origin) return;
-  const { results } = await run(origin + "/old");
+  const url = origin + "/old";
+  const { results } = await run(url);
+  assert.ok(results.some(r => r.item === "<title>" && r.detail.includes("예시 행사 2026 일정")));
   assert.ok(results.some(r => r.item === "X-Robots-Tag" && r.level === "WARN" && r.channel === "공통"));
   assert.ok(!results.some(r => r.detail.includes("applebot: none")));
   assert.ok(!results.some(r => r.level === "FAIL"));
-  await assert.rejects(exec(process.execPath, [cli, "--json", "--expect-indexable", origin + "/old"]), error => {
-    assert.equal(error.code, 1);
-    const fails = JSON.parse(error.stdout).results.filter(r => r.level === "FAIL");
-    assert.deepEqual(fails.map(r => [r.item, r.channel]), [["X-Robots-Tag", "공통"]]);
-    return true;
-  });
+  const expected = [["X-Robots-Tag", "공통"]];
+  const failures = rows => rows.filter(r => r.level === "FAIL").map(r => [r.item, r.channel]);
+  assert.deepEqual(failures((await run(url, { expectIndexable: true })).results), expected);
+  if (tcp) {
+    await assert.rejects(exec(process.execPath, [cli, "--json", "--expect-indexable", url]), error => {
+      assert.equal(error.code, 1);
+      assert.deepEqual(failures(JSON.parse(error.stdout).results), expected);
+      return true;
+    });
+  }
 });
 
 test("offline public CLI gate applies restrictive rules for specialized crawlers", async t => {

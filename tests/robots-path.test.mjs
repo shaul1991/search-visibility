@@ -1,6 +1,5 @@
-import { listenOnLoopback } from "./loopback.mjs";
+import { startHttpFixture } from "./loopback.mjs";
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
 import { test } from "node:test";
 import { robotsDecision, run } from "../skills/seo-orchestrator/scripts/seo-check.mjs";
 
@@ -51,18 +50,19 @@ test("wildcards and end anchors include the query and preserve reserved octets",
 
 test("URL checks use the final page path, retain rule evidence and flag HTTP 429", async (t) => {
   let robotsResponseStatus = 200;
-  const server = createServer((req, res) => {
-    if (req.url === "/old") {
-      res.writeHead(301, { location: "/events/public/page?preview=1" }).end();
-    } else if (req.url === "/robots.txt") {
-      res.writeHead(robotsResponseStatus, { "content-type": "text/plain" });
-      res.end("User-agent: *\nDisallow: /events/\nAllow: /events/public/\nDisallow: /*?preview=1$");
-    } else {
-      res.writeHead(200, { "content-type": "text/html" }).end("<title>행사 목록</title>");
+  const { origin } = await startHttpFixture(t, (url) => {
+    if (url.pathname === "/old") {
+      return { status: 301, headers: { location: "/events/public/page?preview=1" } };
     }
+    if (url.pathname === "/robots.txt") {
+      return {
+        status: robotsResponseStatus,
+        headers: { "content-type": "text/plain" },
+        body: "User-agent: *\nDisallow: /events/\nAllow: /events/public/\nDisallow: /*?preview=1$",
+      };
+    }
+    return { headers: { "content-type": "text/html" }, body: "<title>행사 목록</title>" };
   });
-  const origin = await listenOnLoopback(server, t);
-  if (!origin) return;
   const { results } = await run(origin + "/old");
   const decision = results.find((row) => row.item === "robots.txt *");
   assert.equal(decision.level, "INFO"); // /events/public/ is longer than /*?preview=1$
