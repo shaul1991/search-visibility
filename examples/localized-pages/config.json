@@ -1,0 +1,4 @@
+{
+  "targets": ["en.html", "ko.html", "en-ca.html"],
+  "expectIndexable": true
+}
