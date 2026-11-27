@@ -21,6 +21,9 @@ test("conflicting head targets fail, spelling variants of the same target only w
 
 test("canonical belongs in the document head, including when head tags are omitted", () => {
   assert.deepEqual(results("<!doctype html><html><title>t</title>" + link(url) + "<p>body</p>"), []);
+  const afterHead = '<html><head><title>t</title></head>\n<base href="https://example.org/"><meta name="robots" content="index">';
+  assert.deepEqual(results(afterHead + link(url) + "<body><p>x</p></body>"), []);
+  assert.ok(results(afterHead + "<p>x</p>" + link(url)).some(r => r.level === "FAIL"));
   for (const start of ["<body>", "<main>", "body text ", "</head><body>"]) {
     assert.ok(results(start + link(url)).some(r => r.level === "FAIL" && r.detail.includes("<head>")));
   }

@@ -49,7 +49,10 @@ export function parseHtml(html) {
     title: null, lang: null, meta: {}, metaTags: [], canonical: null, canonicalLinks: [], baseHref: null,
     icons: [], jsonLd: [], anchors: [], bodyTextLength: 0, h1: [], verificationInBody: false,
   };
+  // In the HTML "after head" insertion mode, link/meta/base and other head
+  // metadata are still inserted into head until body starts (even implicitly).
   let inHead = true;
+  let afterHead = false;
   const inert = [];
   const bodyText = [];
   let heading = null;
@@ -75,11 +78,12 @@ export function parseHtml(html) {
       continue;
     }
     if (closing) {
-      if (["head", "body", "html"].includes(name)) inHead = false;
+      if (name === "head") afterHead = true;
+      if (name === "body" || name === "html") inHead = false;
       if (name === "h1" || name === "body") finishHeading();
       continue;
     }
-    if (!HEAD_ELEMENTS.has(name)) inHead = false;
+    if (!HEAD_ELEMENTS.has(name) || (afterHead && name === "noscript")) inHead = false;
     switch (name) {
       case "html":
         page.lang ??= attrs.lang ?? null;
