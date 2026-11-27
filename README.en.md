@@ -33,7 +33,7 @@ You can also supply local HTML paths in `targets` or a sitemap URL in `sitemap`.
 
 ## Measure search and AI visibility
 
-- **Google search.** Set `searchConsole` to the path of a UTF-8 CSV exported from a property you can access. Import one query, page, or date table with English or Korean headers for the dimension, clicks, and impressions. The report calculates CTR from the imported rows.
+- **Google search.** Set `searchConsole` to the path of a UTF-8 CSV exported from a property you can access. Import one query, page, or date table with English or Korean headers for the dimension, clicks, and impressions. The report calculates CTR from the imported rows. [Import a localized CSV](docs/search-console.en.md).
 - **AI answers.** Set `brand` to your brand name, then add the answers you collected to `observations` as an array or a path to a JSON file. Each record needs `engine`, `query`, `observedAt`, `answer`, and `sources`. Use an empty list for an observed answer with no cited links. Include the observation language in `locale` when comparing markets. The CLI analyzes the supplied sample locally. [Example records](examples/demo/answers.json)
 - **Citation ownership.** Put hosts you own in `domains` to include their subdomains. For an account on a shared host, put its full HTTP(S) account URL in `ownedUrlPrefixes`. A citation counts if either rule matches. For example, `https://github.com/example-team` covers that account and its repositories. A sibling account such as `example-team-tools` is outside that scope. For a single GitHub account, use only the account prefix. Adding `github.com` to `domains` would include every account. Prefixes require a path on the same origin (scheme, host, and port). Omit credentials, query strings, and fragments.
 
