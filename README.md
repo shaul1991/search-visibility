@@ -33,6 +33,8 @@ npm run visibility -- init
 npm run visibility -- ./visibility.config.json
 ```
 
+보고서의 심각도 배지에서 실패·경고 건수를 확인하고, 페이지 진단에서 심각도를 필터링하거나 우선순위순으로 정렬할 수 있습니다. 주요 문제에는 조치 방법이 표시됩니다. 요약은 클립보드로 복사할 수 있고, 인쇄 또는 PDF 저장 시 접힌 진단과 근거도 포함됩니다.
+
 한국어가 기본입니다. 영문 CLI와 HTML 보고서는 `npm run demo -- --lang en`으로 확인할 수 있습니다. 설정 최상위에 `"locale": "en"`을 저장할 수 있으며, 실행 시 지정한 `--lang en|ko`가 설정값에 우선합니다. 페이지 제목, CSV 항목, 관측 질문 등 원본 데이터는 그대로 표시됩니다. 독립 실행 `seo-check`에서도 `--lang`을 사용할 수 있습니다.
 
 `npm run visibility -- compare <변경전/report.json> <변경후/report.json>`으로 사이트 진단, Search Console 실적, AI 엔진별 가시성의 증감을 HTML과 JSON으로 생성합니다.
