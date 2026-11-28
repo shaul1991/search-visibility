@@ -108,3 +108,49 @@ test("sitemap-derived pages restrict auxiliary robots and social preview redirec
   const skipped = report.pages[0].results.filter(r => r.detail.includes("다른 출처"));
   assert.deepEqual(skipped.map(r => r.item), ["og:image 응답", "robots.txt"]);
 });
+
+test("robots sitemap discovery stays on the final origin and checks audited language variants", async (t) => {
+  const requested = [];
+  const { origin } = await startHttpFixture(t, (url) => {
+    requested.push(url.pathname);
+    const { origin, pathname } = url;
+    if (pathname === "/start") return { status: 302, headers: { location: "/en" } };
+    if (pathname === "/robots.txt") return { body: `User-agent: GPTBot
+Disallow: /en
+User-agent: OAI-SearchBot
+Allow: /
+Sitemap: ${origin}/map # primary
+Sitemap: ${origin}/map
+Sitemap: https://example.invalid/map
+Sitemap: /relative` };
+    if (pathname === "/map") return { body: `<urlset>${loc("url", origin + "/ko")}</urlset>` };
+    if (pathname === "/explicit") return { body: "<urlset/>" };
+    const links = pathname === "/en" ? [["en", "/en"], ["ko", "/ko"], ["x-default", "/en"]] : [
+      ["ko", "/ko"], ["fr", "/en"], ["ja", "/unselected"],
+    ];
+    return { body: `<html><head>${links.map(([lang, path]) =>
+      `<link rel="alternate" hreflang="${lang}" href="${origin + path}">`).join("")}</head></html>` };
+  });
+  const report = await auditSite({ targets: [origin + "/start"] });
+  assert.deepEqual(report.pages.map(page => page.target), [origin + "/start", origin + "/ko"]);
+  assert.equal(report.sitemapsRead, 1);
+  assert.equal(requested.filter(path => path === "/map").length, 1);
+  assert.deepEqual(report.discoveryErrors, []);
+  assert.ok(!requested.includes("/relative"));
+  assert.ok(!requested.includes("/unselected"));
+  const [english, korean] = report.pages;
+  assert.equal(english.hreflang.url, origin + "/en");
+  assert.ok(english.results.some(r => r.item === "hreflang reciprocity"));
+  assert.ok(!english.results.some(r => r.item === "hreflang x-default"));
+  assert.ok(korean.results.some(r => r.item === "hreflang x-default"));
+  assert.ok(!korean.results.some(r => r.item === "hreflang reciprocity"));
+  assert.deepEqual(english.robots.crawlers.find(bot => bot.agent === "GPTBot"), {
+    agent: "GPTBot", purpose: "training", decision: "blocked", via: "own", rule: { type: "disallow", path: "/en" },
+  });
+  assert.equal(english.robots.crawlers.find(bot => bot.agent === "OAI-SearchBot").decision, "allowed");
+  assert.equal(korean.robots.crawlers.find(bot => bot.agent === "GPTBot").decision, "allowed");
+  const explicit = await auditSite({ targets: [origin + "/start"], sitemap: origin + "/explicit" });
+  assert.equal(explicit.sitemapsRead, 1);
+  assert.equal(explicit.pages.length, 1);
+  assert.equal(requested.filter(path => path === "/map").length, 1);
+});

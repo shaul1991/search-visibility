@@ -14,7 +14,7 @@ const help = () => (currentLocale() === "en" ? `Usage: node visibility.mjs <conf
        node visibility.mjs --url <URL> [--out <new folder>] [--fail-on-findings] [--lang en|ko]
        node visibility.mjs init [config.json] [--lang en|ko]
        node visibility.mjs compare <before.report.json> <after.report.json> [--out <new folder>] [--lang en|ko]
-Use an absolute HTTP(S) URL to audit one page. init creates visibility.config.json by default.
+Start an audit with an absolute HTTP(S) URL. init creates visibility.config.json by default.
 Relative input paths are resolved from the config file. Writes report.json and index.html.
 Language: --lang overrides config locale. The default is ko.
 The default output is a new folder under visibility-reports/ in the current directory.
@@ -22,7 +22,7 @@ Exit codes: 0 completed, 1 FAIL found with --fail-on-findings, 2 input, collecti
         node visibility.mjs --url <URL> [--out <새 폴더>] [--fail-on-findings] [--lang en|ko]
         node visibility.mjs init [설정.json] [--lang en|ko]
         node visibility.mjs compare <변경전.report.json> <변경후.report.json> [--out <새 폴더>] [--lang en|ko]
-HTTP(S) 절대 URL을 입력하면 한 페이지를 점검합니다. init의 기본 파일은 visibility.config.json입니다.
+HTTP(S) 절대 URL을 입력하면 해당 URL에서 점검을 시작합니다. init의 기본 파일은 visibility.config.json입니다.
 설정 파일을 기준으로 상대 경로를 해석합니다. report.json과 index.html을 생성합니다.
 언어: --lang이 설정의 locale보다 우선하며 기본값은 ko입니다.
 출력 경로를 생략하면 현재 폴더의 visibility-reports/ 아래에 실행별 보고서를 만듭니다.
