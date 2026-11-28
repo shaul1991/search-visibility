@@ -43,6 +43,8 @@ Use the [before-and-after AI citation guide](docs/ai-comparison.en.md) to compar
 
 For Korean search, use the [Naver, Daum and AI Briefing measurement guide](docs/korea-search.en.md).
 
+Use the [ChatGPT Search visibility guide](docs/chatgpt-search.en.md) to measure citations and website referrals.
+
 Use the [Google AI visibility guide](docs/google-ai.en.md) to interpret Search Console AI impressions and sampled citations.
 
 Use the [Bing and Copilot citation guide](docs/bing-ai.en.md) to compare Bing Webmaster Tools metrics and locally collected answers.
