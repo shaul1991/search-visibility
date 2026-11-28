@@ -54,6 +54,8 @@ Use the [localized page audit guide](docs/localized-pages.en.md) to check canoni
 - **AI answers.** Set `brand` to your brand name, then add the answers you collected to `observations` as an array or a path to a JSON file. Each record needs `engine`, `query`, `observedAt`, `answer`, and `sources`. Use an empty list for an observed answer with no cited links. Include the observation language in `locale` when comparing markets. The CLI analyzes the supplied sample locally. [Example records](examples/demo/answers.json)
 - **Citation ownership.** Put hosts you own in `domains` to include their subdomains. For an account on a shared host, put its full HTTP(S) account URL in `ownedUrlPrefixes`. A citation counts if either rule matches. For example, `https://github.com/example-team` covers that account and its repositories. A sibling account such as `example-team-tools` is outside that scope. For a single GitHub account, use only the account prefix. Adding `github.com` to `domains` would include every account. Prefixes require a path on the same origin (scheme, host, and port). Omit credentials, query strings, and fragments.
 
+The offline HTML report shows counts by severity, lets you filter checks and sort pages by priority, and suggests fixes for common technical issues. Copy the overview to share it, or print and save to PDF with collapsed findings and evidence included.
+
 Run `npm run visibility -- compare <before/report.json> <after/report.json> --lang en` to generate an HTML and JSON comparison of site findings, Search Console performance, and AI visibility by engine.
 
 Use the [before-and-after AI citation guide](docs/ai-comparison.en.md) to compare the same questions and markets with a runnable synthetic example.

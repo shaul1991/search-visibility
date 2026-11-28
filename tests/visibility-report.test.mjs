@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { renderReport } from "../skills/seo-orchestrator/scripts/visibility-report.mjs";
 
@@ -17,7 +18,7 @@ test("empty report is offline HTML, showing unobserved AI metrics separately fro
   assert.match(html, /대상 0개 · 점검 오류 0개/);
   assert.match(html, /기록한 답변이 없습니다/);
   assert.match(html, /측정 안 됨/);
-  assert.doesNotMatch(html, /\b0%|<script\b|<link\b|<iframe\b|<img\b/i);
+  assert.doesNotMatch(html, /\b0%|<link\b|<iframe\b|<img\b/i);
 });
 
 test("report preserves partial coverage, warnings, failures and action skills", () => {
@@ -78,7 +79,8 @@ test("user-controlled fields stay text and hazardous source protocols never beco
       matchedSources: [], sources: ["javascript:alert(1)", "file:///etc/hosts", "https://example.org/a?x=1&y=2"], evidenceUrl: "data:text/html,<script>alert(1)</script>" }],
   };
   const html = renderReport(report);
-  assert.doesNotMatch(html, /<img\b|<script\b|href="(?:javascript|file|data):/i);
+  assert.doesNotMatch(html, /<img\b|href="(?:javascript|file|data):/i);
+  assert.equal([...html.matchAll(/<script\b/g)].length, 1);
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(html, /href="https:\/\/example\.org\/a\?x=1&amp;y=2"/);
 });
@@ -111,4 +113,22 @@ test("marks synthetic example data in the header only when sample is true", () =
   assert.doesNotMatch(renderReport(report), /합성 예시 데이터/);
   assert.doesNotMatch(renderReport({ ...report, sample: false }), /합성 예시 데이터/);
   assert.match(renderReport({ ...report, sample: true }), /<\/h1>\s*<p class="sample">이 보고서는 합성 예시 데이터로 생성했습니다\.<\/p>/);
+});
+
+test("bilingual report exposes severity totals and targeted actions with one CSP-authorized offline script", () => {
+  const report = emptyReport();
+  report.site.pages = [
+    { target: "first", results: [{ level: "WARN", item: "meta description" }] },
+    { target: "second", results: [{ level: "FAIL", item: "og:image 응답" }, { level: "PASS", item: "<h1>" }] },
+  ];
+  const en = renderReport({ ...report, locale: "en" });
+  assert.match(en, /FAIL 1.+WARN 1.+INFO 0.+PASS 1/);
+  assert.match(en, /data-fails="1" data-warnings="0"/);
+  assert.match(en, /data-level="FAIL"[\s\S]+absolute public HTTPS image URL/);
+  assert.match(en, /<textarea[^>]+readonly[^>]*>[\s\S]+FAIL 1 · WARN 1 · INFO 0 · PASS 1/);
+  assert.match(renderReport(report), /이미지 요청이 200을 반환하는지/);
+  const [script] = [...en.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  const hash = createHash("sha256").update(script[1]).digest("base64");
+  assert.ok(en.includes(`script-src 'sha256-${hash}'`));
+  assert.doesNotMatch(en, /<script[^>]*\bsrc=|script-src[^;]*'unsafe-inline'/);
 });
