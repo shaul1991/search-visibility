@@ -1,11 +1,32 @@
 {
-  "name": "seo-skills",
+  "name": "search-visibility",
   "version": "0.6.0",
-  "private": true,
   "description": "사이트 진단·검색 성과·AI 답변 인용을 한 번에 확인하는 무료 로컬 CLI와 Agent Skills",
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shaul1991/search-visibility.git"
+  },
+  "homepage": "https://github.com/shaul1991/search-visibility#readme",
+  "keywords": [
+    "seo",
+    "search-visibility",
+    "search-console",
+    "ai-search",
+    "agent-skills"
+  ],
+  "bin": {
+    "search-visibility": "skills/seo-orchestrator/scripts/visibility.mjs",
+    "seo-check": "skills/seo-orchestrator/scripts/seo-check.mjs"
+  },
+  "files": [
+    "skills/seo-orchestrator/scripts/*.mjs",
+    "README.en.md"
+  ],
   "scripts": {
     "visibility": "node skills/seo-orchestrator/scripts/visibility.mjs",
     "demo": "node skills/seo-orchestrator/scripts/visibility.mjs examples/demo/config.json",
