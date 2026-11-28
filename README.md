@@ -26,6 +26,8 @@ npm run demo
 
 [ChatGPT 검색 가시성 측정 안내](docs/chatgpt-search.ko.md)에서 답변 인용과 사이트 유입을 측정하는 방법을 확인하세요.
 
+[Perplexity 검색 인용 측정 안내](docs/perplexity-search.ko.md)에서 검색 모드를 기록하고 소유 계정의 인용을 집계하는 방법을 확인하세요.
+
 [Google AI 개요·AI 모드 측정 안내](docs/google-ai.ko.md)에서 Search Console AI 노출수와 직접 수집한 답변의 인용률을 확인하세요.
 
 [Bing과 Copilot AI 인용 측정 안내](docs/bing-ai.ko.md)에서 Bing Webmaster Tools 지표와 직접 수집한 답변을 비교하는 방법을 확인하세요.

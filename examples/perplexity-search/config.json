@@ -1,0 +1,29 @@
+{
+  "sample": true,
+  "brand": "Example Studio",
+  "ownedUrlPrefixes": [
+    "https://bücher.example/스튜디오"
+  ],
+  "observations": [
+    {
+      "engine": "perplexity-search",
+      "query": "독일어 동화책을 어디서 찾아볼 수 있나요?",
+      "locale": "ko-KR",
+      "observedAt": "2026-11-14T00:30:00+09:00",
+      "answer": "Example Studio의 독일어 동화책 목록을 살펴보세요.",
+      "sources": [
+        "https://xn--bcher-kva.example/%EC%8A%A4%ED%8A%9C%EB%94%94%EC%98%A4/books"
+      ]
+    },
+    {
+      "engine": "perplexity-search",
+      "query": "Where can I find German storybooks?",
+      "locale": "en-CA",
+      "observedAt": "2026-11-13T07:30:00-08:00",
+      "answer": "A different account on the book directory has a storybook list.",
+      "sources": [
+        "https://bücher.example/another-account/books"
+      ]
+    }
+  ]
+}
