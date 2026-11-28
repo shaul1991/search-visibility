@@ -1,3 +1,4 @@
+import { t, currentLocale } from "./locale.mjs";
 import http from "node:http";
 import https from "node:https";
 import { promisify } from "node:util";
@@ -13,7 +14,7 @@ async function readBytes(response, maxBytes) {
   let length = 0;
   for await (const chunk of response) {
     length += chunk.length;
-    if (maxBytes && length > maxBytes) throw new Error(`응답이 점검 한도 ${maxBytes}바이트를 넘었습니다.`);
+    if (maxBytes && length > maxBytes) throw new Error((currentLocale() === "en" ? `Response exceeds the ${maxBytes}-byte audit limit.` : `응답이 점검 한도 ${maxBytes}바이트를 넘었습니다.`));
     chunks.push(chunk);
   }
   let bytes = Buffer.concat(chunks, length);
@@ -39,9 +40,9 @@ export async function fetchResource(url, userAgent, { allowedOrigin, maxBytes, s
   const chain = [];
   let current = new URL(url);
   for (let redirects = 0; redirects <= 5; redirects++) {
-    if (!["https:", "http:"].includes(current.protocol)) throw new Error("HTTP(S) URL만 점검할 수 있습니다.");
-    if (current.username || current.password) throw new Error("인증정보가 포함된 URL은 점검할 수 없습니다.");
-    if (allowedOrigin && current.origin !== allowedOrigin) throw new Error("사이트맵과 다른 출처(origin)로 연결되어 요청을 생략했습니다.");
+    if (!["https:", "http:"].includes(current.protocol)) throw new Error(t("HTTP(S) URL만 점검할 수 있습니다.", "Only HTTP(S) URLs can be audited."));
+    if (current.username || current.password) throw new Error(t("인증정보가 포함된 URL은 점검할 수 없습니다.", "URLs with credentials cannot be audited."));
+    if (allowedOrigin && current.origin !== allowedOrigin) throw new Error(t("사이트맵과 다른 출처(origin)로 연결되어 요청을 생략했습니다.", "Skipped a request that redirected outside the sitemap origin."));
     const client = current.protocol === "https:" ? https : http;
     const response = await new Promise((resolve, reject) => {
       const request = client.get(current, {
@@ -63,7 +64,7 @@ export async function fetchResource(url, userAgent, { allowedOrigin, maxBytes, s
     }
     return { status, headers: response.headers, robotsHeaders, bytes: await readBytes(response, maxBytes), chain, finalUrl: current.href };
   }
-  throw new Error("리다이렉트 5회 초과");
+  throw new Error(t("리다이렉트 5회 초과", "More than 5 redirects"));
 }
 
 export async function fetchPage(url, userAgent, options) {

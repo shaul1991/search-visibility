@@ -1,10 +1,12 @@
 #!/usr/bin/env node
+import { t, currentLocale, withLocale } from "./locale.mjs";
 // seo-check: 단일 페이지의 검색·공유 마크업 점검 (Google, 네이버, Open Graph, X, JSON-LD).
 // 의존성 없음. Node 18+.
 //   node scripts/seo-check.mjs <URL | HTML 파일> [--json] [--expect-indexable]
 // 순위·색인 여부·JS 렌더링 결과는 알 수 없습니다. 서버가 준 HTML만 봅니다.
 
 import { readFile } from "node:fs/promises";
+import { parseArgs } from "node:util";
 import { isCliEntry } from "./cli-entry.mjs";
 
 import { parseHtml, checkCanonical, httpUrl } from "./html.mjs";
@@ -29,55 +31,55 @@ function flattenLd(node, out = []) {
 const typesOf = (n) => [].concat(n["@type"] || []).map(String);
 
 function checkDate(value, field, add) {
-  if (typeof value !== "string") return add("FAIL", "구조화 데이터", `Event.${field}`, `${field}가 문자열이 아님`, "structured-data");
-  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return add("FAIL", "구조화 데이터", `Event.${field}`, `ISO-8601 아님: ${value}`, "structured-data");
-  if (/T00:00(:00)?/.test(value)) add("WARN", "구조화 데이터", `Event.${field}`, `자정(T00:00)으로 채운 값: ${value}. 시간을 모르면 날짜만 쓰기`, "structured-data");
-  else if (/T\d{2}:\d{2}/.test(value) && !/(Z|[+-]\d{2}:?\d{2})$/.test(value)) add("WARN", "구조화 데이터", `Event.${field}`, `시간에 UTC 오프셋 없음: ${value} (예: +09:00)`, "structured-data");
+  if (typeof value !== "string") return add("FAIL", t("구조화 데이터", "Structured data"), `Event.${field}`, (currentLocale() === "en" ? `${field} must be a string` : `${field}가 문자열이 아님`), "structured-data");
+  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return add("FAIL", t("구조화 데이터", "Structured data"), `Event.${field}`, (currentLocale() === "en" ? `Invalid ISO 8601 value: ${value}` : `ISO-8601 아님: ${value}`), "structured-data");
+  if (/T00:00(:00)?/.test(value)) add("WARN", t("구조화 데이터", "Structured data"), `Event.${field}`, (currentLocale() === "en" ? `Midnight placeholder (T00:00): ${value}. Use only the date when the time is unknown` : `자정(T00:00)으로 채운 값: ${value}. 시간을 모르면 날짜만 쓰기`), "structured-data");
+  else if (/T\d{2}:\d{2}/.test(value) && !/(Z|[+-]\d{2}:?\d{2})$/.test(value)) add("WARN", t("구조화 데이터", "Structured data"), `Event.${field}`, (currentLocale() === "en" ? `Missing UTC offset: ${value} (example: +09:00)` : `시간에 UTC 오프셋 없음: ${value} (예: +09:00)`), "structured-data");
 }
 
 export function checkJsonLd(blocks, add) {
   const nodes = [];
   blocks.forEach((raw, i) => {
     try { flattenLd(JSON.parse(raw), nodes); }
-    catch (e) { add("FAIL", "구조화 데이터", `JSON-LD #${i + 1}`, `JSON 파싱 실패: ${String(e.message).slice(0, 80)}`, "structured-data"); }
+    catch (e) { add("FAIL", t("구조화 데이터", "Structured data"), `JSON-LD #${i + 1}`, (currentLocale() === "en" ? `Invalid JSON: ${String(e.message).slice(0, 80)}` : `JSON 파싱 실패: ${String(e.message).slice(0, 80)}`), "structured-data"); }
   });
-  if (!blocks.length) add("INFO", "구조화 데이터", "JSON-LD", "없음", "structured-data");
-  else add("INFO", "구조화 데이터", "유형", [...new Set(nodes.flatMap(typesOf))].join(", ") || "(@type 없음)", "structured-data");
+  if (!blocks.length) add("INFO", t("구조화 데이터", "Structured data"), "JSON-LD", t("없음", "Missing"), "structured-data");
+  else add("INFO", t("구조화 데이터", "Structured data"), t("유형", "Types"), [...new Set(nodes.flatMap(typesOf))].join(", ") || t("(@type 없음)", "(No @type)"), "structured-data");
 
   for (const n of nodes) {
-    const t = typesOf(n);
-    if (t.some((x) => /Event$/.test(x))) {
-      if (!n.name) add("FAIL", "구조화 데이터", "Event.name", "필수 속성 없음", "structured-data");
-      if (!n.startDate) add("FAIL", "구조화 데이터", "Event.startDate", "필수 속성 없음", "structured-data");
+    const types = typesOf(n);
+    if (types.some((x) => /Event$/.test(x))) {
+      if (!n.name) add("FAIL", t("구조화 데이터", "Structured data"), "Event.name", t("필수 속성 없음", "Required property missing"), "structured-data");
+      if (!n.startDate) add("FAIL", t("구조화 데이터", "Structured data"), "Event.startDate", t("필수 속성 없음", "Required property missing"), "structured-data");
       else checkDate(n.startDate, "startDate", add);
       if (n.endDate) checkDate(n.endDate, "endDate", add);
       const loc = [].concat(n.location || [])[0];
-      if (!loc) add("FAIL", "구조화 데이터", "Event.location", "필수 속성 없음", "structured-data");
+      if (!loc) add("FAIL", t("구조화 데이터", "Structured data"), "Event.location", t("필수 속성 없음", "Required property missing"), "structured-data");
       else {
-        if (!loc.name) add("WARN", "구조화 데이터", "Event.location.name", "장소 이름 없음", "structured-data");
-        if (!loc.address) add("FAIL", "구조화 데이터", "Event.location.address", "주소 없음(Google 필수)", "structured-data");
+        if (!loc.name) add("WARN", t("구조화 데이터", "Structured data"), "Event.location.name", t("장소 이름 없음", "Missing venue name"), "structured-data");
+        if (!loc.address) add("FAIL", t("구조화 데이터", "Structured data"), "Event.location.address", t("주소 없음(Google 필수)", "Missing address (required by Google)"), "structured-data");
       }
-      if (n.name && loc?.name && String(n.name).trim() === String(loc.name).trim()) add("WARN", "구조화 데이터", "Event.name", "행사명이 장소명과 같음", "structured-data");
-      if (!n.eventStatus) add("INFO", "구조화 데이터", "Event.eventStatus", "없음 → Google은 EventScheduled로 간주", "structured-data");
-      if (!n.image) add("WARN", "구조화 데이터", "Event.image", "권장 속성 없음", "structured-data");
+      if (n.name && loc?.name && String(n.name).trim() === String(loc.name).trim()) add("WARN", t("구조화 데이터", "Structured data"), "Event.name", t("행사명이 장소명과 같음", "Event name matches the venue name"), "structured-data");
+      if (!n.eventStatus) add("INFO", t("구조화 데이터", "Structured data"), "Event.eventStatus", t("없음 → Google은 EventScheduled로 간주", "Missing. Google assumes EventScheduled"), "structured-data");
+      if (!n.image) add("WARN", t("구조화 데이터", "Structured data"), "Event.image", t("권장 속성 없음", "Recommended property missing"), "structured-data");
     }
-    if (t.includes("BreadcrumbList")) {
+    if (types.includes("BreadcrumbList")) {
       const items = [].concat(n.itemListElement || []);
-      if (!items.length) add("FAIL", "구조화 데이터", "BreadcrumbList", "itemListElement 없음", "structured-data");
+      if (!items.length) add("FAIL", t("구조화 데이터", "Structured data"), "BreadcrumbList", t("itemListElement 없음", "Missing itemListElement"), "structured-data");
       for (const it of items) {
         const name = it.name ?? it.item?.name;
-        if (!name) add("FAIL", "구조화 데이터", "BreadcrumbList.name", "name 없음(네이버 필수)", "structured-data");
-        else if (/^(홈|home|top)$/i.test(String(name).trim())) add("WARN", "구조화 데이터", "BreadcrumbList.name", `일반어 "${name}" — 네이버는 페이지를 설명하는 이름 권장`, "structured-data");
+        if (!name) add("FAIL", t("구조화 데이터", "Structured data"), "BreadcrumbList.name", t("name 없음(네이버 필수)", "Missing name (required by Naver)"), "structured-data");
+        else if (/^(홈|home|top)$/i.test(String(name).trim())) add("WARN", t("구조화 데이터", "Structured data"), "BreadcrumbList.name", (currentLocale() === "en" ? `Generic name "${name}". Naver recommends a name that describes the page` : `일반어 "${name}" — 네이버는 페이지를 설명하는 이름 권장`), "structured-data");
       }
     }
-    if ((t.includes("Organization") || t.includes("Person")) && n.sameAs !== undefined) {
-      if (!n.name || !n.url) add("WARN", "구조화 데이터", `${t[0]}.sameAs`, "네이버 연관채널은 name·url·sameAs 필수", "structured-data");
+    if ((types.includes("Organization") || types.includes("Person")) && n.sameAs !== undefined) {
+      if (!n.name || !n.url) add("WARN", t("구조화 데이터", "Structured data"), `${types[0]}.sameAs`, t("네이버 연관채널은 name·url·sameAs 필수", "Naver associated channels require name, url and sameAs"), "structured-data");
     }
-    if (t.includes("WebSite") && !n.name) add("WARN", "구조화 데이터", "WebSite.name", "사이트 이름 없음", "structured-data");
+    if (types.includes("WebSite") && !n.name) add("WARN", t("구조화 데이터", "Structured data"), "WebSite.name", t("사이트 이름 없음", "Missing site name"), "structured-data");
   }
   const events = nodes.filter((n) => typesOf(n).some((x) => /Event$/.test(x)));
-  if (events.length > 1) add("WARN", "구조화 데이터", "Event 개수", `${events.length}개 — Google 이벤트 환경은 한 이벤트에 집중한 상세(리프) 페이지만 지원. 목록 페이지는 ItemList 권장`, "structured-data");
-  if (events.length) add("INFO", "구조화 데이터", "Event 지역", "Google 이벤트 검색 환경 제공 지역에 한국 없음(2026-11-04 확인). 네이버 Event 가이드 없음", "structured-data");
+  if (events.length > 1) add("WARN", t("구조화 데이터", "Structured data"), t("Event 개수", "Event count"), (currentLocale() === "en" ? `${events.length} events. Google's event experience supports pages dedicated to one event. Use ItemList on listing pages` : `${events.length}개 — Google 이벤트 환경은 한 이벤트에 집중한 상세(리프) 페이지만 지원. 목록 페이지는 ItemList 권장`), "structured-data");
+  if (events.length) add("INFO", t("구조화 데이터", "Structured data"), t("Event 지역", "Event regions"), t("Google 이벤트 검색 환경 제공 지역에 한국 없음(2026-11-04 확인). 네이버 Event 가이드 없음", "Google's event experience excludes South Korea (checked 2026-11-04). Naver has no Event guide"), "structured-data");
   return nodes;
 }
 
@@ -209,23 +211,23 @@ export function robotsBlocksRoot(txt, agent) {
 export function checkPage(p, add, baseUrl, { robotsHeaders = [], expectIndexable = false } = {}) {
   const abs = (u) => /^https?:\/\//i.test(u || "");
   // 제목
-  if (!p.title) add("FAIL", "공통", "<title>", "없음", "google-search");
+  if (!p.title) add("FAIL", t("공통", "General"), "<title>", t("없음", "Missing"), "google-search");
   else {
-    add("INFO", "공통", "<title>", `${p.title} (${[...p.title].length}자)`, "google-search");
+    add("INFO", t("공통", "General"), "<title>", (currentLocale() === "en" ? `${p.title} (${[...p.title].length} characters)` : `${p.title} (${[...p.title].length}자)`), "google-search");
     const words = p.title.toLowerCase().split(/[\s|·,:\-–—]+/).filter((w) => w.length > 1);
     const rep = Object.entries(words.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {})).filter(([, c]) => c >= 2);
-    if (rep.length) add("WARN", "공통", "<title> 반복", `반복 단어: ${rep.map(([w, c]) => `${w}×${c}`).join(", ")} (네이버: 2회 이상 반복 불이익 가능)`, "naver-search");
-    if (/^(홈|home|상세|detail|untitled)$/i.test(p.title.trim())) add("WARN", "공통", "<title>", "모호한 제목", "google-search");
+    if (rep.length) add("WARN", t("공통", "General"), t("<title> 반복", "<title> repetition"), (currentLocale() === "en" ? `Repeated words: ${rep.map(([w, c]) => `${w}×${c}`).join(", ")} (Naver may penalize repetition)` : `반복 단어: ${rep.map(([w, c]) => `${w}×${c}`).join(", ")} (네이버: 2회 이상 반복 불이익 가능)`), "naver-search");
+    if (/^(홈|home|상세|detail|untitled)$/i.test(p.title.trim())) add("WARN", t("공통", "General"), "<title>", t("모호한 제목", "Generic title"), "google-search");
   }
   // 설명
   const desc = p.meta["description"];
-  if (!desc) add("WARN", "공통", "meta description", "없음", "google-search");
+  if (!desc) add("WARN", t("공통", "General"), "meta description", t("없음", "Missing"), "google-search");
   else {
-    add("INFO", "공통", "meta description", `${[...desc].length}자`, "google-search");
-    if (p.title && desc.trim() === p.title.trim()) add("WARN", "공통", "meta description", "제목과 동일(네이버 불이익 사례)", "naver-search");
+    add("INFO", t("공통", "General"), "meta description", (currentLocale() === "en" ? `${[...desc].length} characters` : `${[...desc].length}자`), "google-search");
+    if (p.title && desc.trim() === p.title.trim()) add("WARN", t("공통", "General"), "meta description", t("제목과 동일(네이버 불이익 사례)", "Same as the title (Naver may penalize this)"), "naver-search");
   }
-  if (p.h1.length === 0) add("WARN", "공통", "<h1>", "없음 — 페이지 기본 제목이 분명해야 함", "google-search");
-  else if (p.h1.length > 1) add("INFO", "공통", "<h1>", `${p.h1.length}개`, "google-search");
+  if (p.h1.length === 0) add("WARN", t("공통", "General"), "<h1>", t("없음 — 페이지 기본 제목이 분명해야 함", "Missing. Provide a clear primary heading"), "google-search");
+  else if (p.h1.length > 1) add("INFO", t("공통", "General"), "<h1>", (currentLocale() === "en" ? `${p.h1.length}` : `${p.h1.length}개`), "google-search");
   const canonical = checkCanonical(p, add, baseUrl);
   // robots meta
   const metaTags = p.metaTags ?? Object.entries(p.meta).map(([name, content]) => ({ name, content }));
@@ -236,40 +238,40 @@ export function checkPage(p, add, baseUrl, { robotsHeaders = [], expectIndexable
   const bing = appliesTo("bingbot");
   const aiSettings = bing.filter(value => /^ai-(training|grounding):[a-z]+$/i.test(value));
   if (naver.includes("nosourceinfo")) {
-    add("INFO", "네이버", "nosourceinfo", "네이버 AI 출처설명 제외 설정됨", "naver-search");
-    add("WARN", "AI 검색", "nosourceinfo", "네이버 AI 출처설명에서 제외됨", "ai-crawlers");
+    add("INFO", t("네이버", "Naver"), "nosourceinfo", t("네이버 AI 출처설명 제외 설정됨", "Opted out of Naver AI source descriptions"), "naver-search");
+    add("WARN", t("AI 검색", "AI search"), "nosourceinfo", t("네이버 AI 출처설명에서 제외됨", "Excluded from Naver AI source descriptions"), "ai-crawlers");
   }
-  if (bing.some(value => value === "noarchive" || value === "nocache")) add("WARN", "Bing", "noarchive/nocache", "Bing은 2027-03-01 이후 이 태그를 AI 학습·그라운딩 설정으로 읽지 않음 — ai-training/ai-grounding 설정으로 옮길지 결정", "other-search-engines");
-  if (aiSettings.length) add("INFO", "Bing", "AI 설정", aiSettings.join(", "), "ai-crawlers");
-  if (bing.includes("ai-grounding:disallow")) add("WARN", "AI 검색", "ai-grounding", "Copilot 등 Bing AI 답변 근거에서 제외 설정됨(2027-02-01부터)", "ai-crawlers");
-  if (appliesTo("applebot").includes("nosnippet") || appliesTo("googlebot").includes("nosnippet")) add("INFO", "공통", "nosnippet", "해당 검색엔진의 설명·AI 답변 사용이 제한될 수 있음", "ai-crawlers");
+  if (bing.some(value => value === "noarchive" || value === "nocache")) add("WARN", "Bing", "noarchive/nocache", t("Bing은 2027-03-01 이후 이 태그를 AI 학습·그라운딩 설정으로 읽지 않음 — ai-training/ai-grounding 설정으로 옮길지 결정", "After 2027-03-01, Bing stops using this tag for AI training and grounding settings. Consider setting ai-training and ai-grounding"), "other-search-engines");
+  if (aiSettings.length) add("INFO", "Bing", t("AI 설정", "AI settings"), aiSettings.join(", "), "ai-crawlers");
+  if (bing.includes("ai-grounding:disallow")) add("WARN", t("AI 검색", "AI search"), "ai-grounding", t("Copilot 등 Bing AI 답변 근거에서 제외 설정됨(2027-02-01부터)", "Excluded as a grounding source for Bing AI answers such as Copilot (from 2027-02-01)"), "ai-crawlers");
+  if (appliesTo("applebot").includes("nosnippet") || appliesTo("googlebot").includes("nosnippet")) add("INFO", t("공통", "General"), "nosnippet", t("해당 검색엔진의 설명·AI 답변 사용이 제한될 수 있음", "May limit use in search snippets and AI answers"), "ai-crawlers");
   // 기본
-  if (!p.lang) add("WARN", "공통", "<html lang>", "없음", "google-search");
-  if (!p.meta["viewport"]) add("WARN", "공통", "viewport", "없음(모바일)", "naver-search");
-  if (!p.icons.length) add("WARN", "네이버", "파비콘", "<link rel=icon> 없음", "naver-search");
-  else if (!p.icons.every(abs)) add("WARN", "네이버", "파비콘", `절대 경로 아님: ${p.icons.filter((u) => !abs(u)).join(", ")} (네이버는 절대 경로 요구)`, "naver-search");
-  if (p.verificationInBody) add("FAIL", "네이버", "소유 확인", "naver-site-verification이 <head> 밖에 있음", "naver-search");
-  else if (p.meta["naver-site-verification"]) add("INFO", "네이버", "소유 확인", "meta 있음", "naver-search");
+  if (!p.lang) add("WARN", t("공통", "General"), "<html lang>", t("없음", "Missing"), "google-search");
+  if (!p.meta["viewport"]) add("WARN", t("공통", "General"), "viewport", t("없음(모바일)", "Missing (mobile)"), "naver-search");
+  if (!p.icons.length) add("WARN", t("네이버", "Naver"), t("파비콘", "Favicon"), t("<link rel=icon> 없음", "Missing <link rel=icon>"), "naver-search");
+  else if (!p.icons.every(abs)) add("WARN", t("네이버", "Naver"), t("파비콘", "Favicon"), (currentLocale() === "en" ? `Relative path: ${p.icons.filter((u) => !abs(u)).join(", ")} (Naver requires absolute paths)` : `절대 경로 아님: ${p.icons.filter((u) => !abs(u)).join(", ")} (네이버는 절대 경로 요구)`), "naver-search");
+  if (p.verificationInBody) add("FAIL", t("네이버", "Naver"), t("소유 확인", "Ownership verification"), t("naver-site-verification이 <head> 밖에 있음", "naver-site-verification is outside <head>"), "naver-search");
+  else if (p.meta["naver-site-verification"]) add("INFO", t("네이버", "Naver"), t("소유 확인", "Ownership verification"), t("meta 있음", "Verification meta tag found"), "naver-search");
   // 본문·링크
-  if (p.bodyTextLength < 200) add("WARN", "공통", "서버 HTML 본문", `텍스트 ${p.bodyTextLength}자 — 클라이언트 렌더링이면 검색로봇이 본문을 못 볼 수 있음`, "google-search");
+  if (p.bodyTextLength < 200) add("WARN", t("공통", "General"), t("서버 HTML 본문", "Server-rendered HTML body"), (currentLocale() === "en" ? `${p.bodyTextLength} characters of text. Search crawlers may miss content rendered on the client` : `텍스트 ${p.bodyTextLength}자 — 클라이언트 렌더링이면 검색로봇이 본문을 못 볼 수 있음`), "google-search");
   const hashLinks = p.anchors.filter((h) => /^#\/|^#!/.test(h));
   const jsLinks = p.anchors.filter((h) => /^javascript:/i.test(h));
-  if (hashLinks.length) add("WARN", "공통", "fragment 링크", `${hashLinks.length}개(#/ 또는 #!) — Google·네이버 모두 별도 페이지로 보지 않음`, "naver-search");
-  if (jsLinks.length) add("WARN", "공통", "javascript: 링크", `${jsLinks.length}개`, "naver-search");
-  add("INFO", "공통", "<a href>", `${p.anchors.length}개`, "google-search");
+  if (hashLinks.length) add("WARN", t("공통", "General"), t("fragment 링크", "Fragment links"), (currentLocale() === "en" ? `${hashLinks.length} links (#/ or #!). Google and Naver treat these as part of the same page` : `${hashLinks.length}개(#/ 또는 #!) — Google·네이버 모두 별도 페이지로 보지 않음`), "naver-search");
+  if (jsLinks.length) add("WARN", t("공통", "General"), t("javascript: 링크", "javascript: links"), (currentLocale() === "en" ? `${jsLinks.length}` : `${jsLinks.length}개`), "naver-search");
+  add("INFO", t("공통", "General"), "<a href>", (currentLocale() === "en" ? `${p.anchors.length}` : `${p.anchors.length}개`), "google-search");
   // Open Graph
   for (const k of ["og:type", "og:title", "og:description", "og:image", "og:url"]) {
-    if (!p.meta[k]) add(k === "og:description" ? "WARN" : "FAIL", "공유", k, "없음", "social-preview");
+    if (!p.meta[k]) add(k === "og:description" ? "WARN" : "FAIL", t("공유", "Sharing"), k, t("없음", "Missing"), "social-preview");
   }
-  if (p.meta["og:image"] && !abs(p.meta["og:image"])) add("FAIL", "공유", "og:image", `절대 URL 아님: ${p.meta["og:image"]}`, "social-preview");
-  if (p.meta["og:url"] && canonical && httpUrl(p.meta["og:url"]) !== canonical) add("WARN", "공유", "og:url", `canonical과 다름 (${p.meta["og:url"]} ≠ ${canonical})`, "social-preview");
-  if (!p.meta["og:site_name"]) add("INFO", "공유", "og:site_name", "없음(Google 사이트 이름·공유에 사용)", "social-preview");
+  if (p.meta["og:image"] && !abs(p.meta["og:image"])) add("FAIL", t("공유", "Sharing"), "og:image", (currentLocale() === "en" ? `Expected an absolute URL: ${p.meta["og:image"]}` : `절대 URL 아님: ${p.meta["og:image"]}`), "social-preview");
+  if (p.meta["og:url"] && canonical && httpUrl(p.meta["og:url"]) !== canonical) add("WARN", t("공유", "Sharing"), "og:url", (currentLocale() === "en" ? `Differs from canonical (${p.meta["og:url"]} ≠ ${canonical})` : `canonical과 다름 (${p.meta["og:url"]} ≠ ${canonical})`), "social-preview");
+  if (!p.meta["og:site_name"]) add("INFO", t("공유", "Sharing"), "og:site_name", t("없음(Google 사이트 이름·공유에 사용)", "Missing (used for Google's site name and sharing)"), "social-preview");
   // X
-  if (!p.meta["twitter:card"]) add("WARN", "X", "twitter:card", "없음 — X 카드 유형을 지정하지 않음", "social-preview");
-  else if (!["summary", "summary_large_image", "app", "player"].includes(p.meta["twitter:card"])) add("WARN", "X", "twitter:card", `알 수 없는 값: ${p.meta["twitter:card"]}`, "social-preview");
-  if (p.meta["twitter:card"] && !p.meta["twitter:title"] && !p.meta["og:title"]) add("FAIL", "X", "twitter:title", "없음(og:title도 없음)", "social-preview");
+  if (!p.meta["twitter:card"]) add("WARN", "X", "twitter:card", t("없음 — X 카드 유형을 지정하지 않음", "Missing. Specify an X card type"), "social-preview");
+  else if (!["summary", "summary_large_image", "app", "player"].includes(p.meta["twitter:card"])) add("WARN", "X", "twitter:card", (currentLocale() === "en" ? `Unknown value: ${p.meta["twitter:card"]}` : `알 수 없는 값: ${p.meta["twitter:card"]}`), "social-preview");
+  if (p.meta["twitter:card"] && !p.meta["twitter:title"] && !p.meta["og:title"]) add("FAIL", "X", "twitter:title", t("없음(og:title도 없음)", "Missing (og:title is also missing)"), "social-preview");
   const xImg = p.meta["twitter:image"] || p.meta["og:image"];
-  if (p.meta["twitter:image"] && !abs(p.meta["twitter:image"])) add("FAIL", "X", "twitter:image", "절대 URL 아님", "social-preview");
+  if (p.meta["twitter:image"] && !abs(p.meta["twitter:image"])) add("FAIL", "X", "twitter:image", t("절대 URL 아님", "Expected an absolute URL"), "social-preview");
   return { ogImage: p.meta["og:image"], xImg, pageNoindex };
 }
 
@@ -284,18 +286,18 @@ async function fetchAuxiliary(url, network) {
 async function checkImage(url, add, network) {
   try {
     const res = await fetchAuxiliary(url, network);
-    if (!res.ok) return add("FAIL", "공유", "og:image 응답", `HTTP ${res.status}`, "social-preview");
+    if (!res.ok) return add("FAIL", t("공유", "Sharing"), t("og:image 응답", "og:image response"), `HTTP ${res.status}`, "social-preview");
     const buf = Buffer.from(await res.arrayBuffer());
     const size = imageSize(buf);
     const kb = (buf.length / 1024).toFixed(1);
-    add("INFO", "공유", "og:image", `${size ? `${size.type} ${size.w}×${size.h}` : "크기 판별 불가"}, ${kb}KB`, "social-preview");
-    if (buf.length < 5000) add("WARN", "네이버", "og:image 용량", `${buf.length}바이트 < 5,000 (네이버 썸네일 조건)`, "naver-search");
-    if (buf.length > 5 * 1024 * 1024) add("WARN", "X", "og:image 용량", "5MB 초과(X 크롤러 한도, 과거 문서)", "social-preview");
+    add("INFO", t("공유", "Sharing"), "og:image", `${size ? `${size.type} ${size.w}×${size.h}` : t("크기 판별 불가", "Dimensions unavailable")}, ${kb}KB`, "social-preview");
+    if (buf.length < 5000) add("WARN", t("네이버", "Naver"), t("og:image 용량", "og:image file size"), (currentLocale() === "en" ? `${buf.length} bytes < 5,000 (Naver thumbnail requirement)` : `${buf.length}바이트 < 5,000 (네이버 썸네일 조건)`), "naver-search");
+    if (buf.length > 5 * 1024 * 1024) add("WARN", "X", t("og:image 용량", "og:image file size"), t("5MB 초과(X 크롤러 한도, 과거 문서)", "Exceeds 5 MB (historical X crawler limit)"), "social-preview");
     if (size) {
-      if (size.w <= 150 || size.h <= 150) add("WARN", "네이버", "og:image 크기", "150×150 초과 필요", "naver-search");
-      if (Math.max(size.w / size.h, size.h / size.w) > 3) add("WARN", "네이버", "og:image 비율", "가로:세로 3:1 초과", "naver-search");
+      if (size.w <= 150 || size.h <= 150) add("WARN", t("네이버", "Naver"), t("og:image 크기", "og:image dimensions"), t("150×150 초과 필요", "Must exceed 150 × 150"), "naver-search");
+      if (Math.max(size.w / size.h, size.h / size.w) > 3) add("WARN", t("네이버", "Naver"), t("og:image 비율", "og:image aspect ratio"), t("가로:세로 3:1 초과", "Width-to-height ratio exceeds 3:1"), "naver-search");
     }
-  } catch (e) { add(network ? "WARN" : "FAIL", "공유", "og:image 응답", String(e.message).slice(0, 100), "social-preview"); }
+  } catch (e) { add(network ? "WARN" : "FAIL", t("공유", "Sharing"), t("og:image 응답", "og:image response"), String(e.message).slice(0, 100), "social-preview"); }
 }
 
 // [robots.txt 이름, 차단 시 수준, Skill, 설명]
@@ -330,11 +332,11 @@ async function checkRobots(url, add, pageNoindex = false, expectIndexable = fals
   try {
     const res = await fetchAuxiliary(new URL("/robots.txt", url), network);
     const ct = res.headers.get("content-type") || "";
-    if (res.status === 429) return add("WARN", "공통", "robots.txt", "HTTP 429 — 요청량 제한으로 규칙을 확인하지 못함. Google의 크롤링이 지연될 수 있어 재확인 필요", "google-search");
-    if (res.status >= 500) return add("FAIL", "공통", "robots.txt", `HTTP ${res.status} — 네이버는 5xx를 '모두 금지'로 해석`, "naver-search");
-    if (res.status >= 400) return add("INFO", "공통", "robots.txt", `HTTP ${res.status} — Google·네이버에서 크롤링 제한 규칙 없음으로 해석`, "naver-search");
+    if (res.status === 429) return add("WARN", t("공통", "General"), "robots.txt", t("HTTP 429 — 요청량 제한으로 규칙을 확인하지 못함. Google의 크롤링이 지연될 수 있어 재확인 필요", "HTTP 429. Rate limiting prevented a check of the rules. Check again because Google crawling may be delayed"), "google-search");
+    if (res.status >= 500) return add("FAIL", t("공통", "General"), "robots.txt", (currentLocale() === "en" ? `HTTP ${res.status}. Naver treats 5xx as disallowing all crawling` : `HTTP ${res.status} — 네이버는 5xx를 '모두 금지'로 해석`), "naver-search");
+    if (res.status >= 400) return add("INFO", t("공통", "General"), "robots.txt", (currentLocale() === "en" ? `HTTP ${res.status}. Google and Naver treat this as having no crawl restrictions` : `HTTP ${res.status} — Google·네이버에서 크롤링 제한 규칙 없음으로 해석`), "naver-search");
     const txt = await res.text();
-    if (/text\/html/i.test(ct)) add("WARN", "공통", "robots.txt", "HTML로 응답 — 네이버는 '없음'으로 볼 수 있음. text/plain 권장", "naver-search");
+    if (/text\/html/i.test(ct)) add("WARN", t("공통", "General"), "robots.txt", t("HTML로 응답 — 네이버는 '없음'으로 볼 수 있음. text/plain 권장", "Returned HTML. Naver may treat the file as missing. Use text/plain"), "naver-search");
     const groups = robotsGroups(txt);
     const target = url.pathname + url.search;
     const path = normalizeRobotsPath(target);
@@ -351,25 +353,25 @@ async function checkRobots(url, add, pageNoindex = false, expectIndexable = fals
         wildcardRule = rule;
         continue;
       }
-      const channel = level === "INFO" ? "AI 학습" : skill === "ai-crawlers" ? "AI 검색" : "공통";
+      const channel = level === "INFO" ? t("AI 학습", "AI training") : skill === "ai-crawlers" ? t("AI 검색", "AI search") : t("공통", "General");
       const evidence = `User-agent: ${groupName}, ${rule.type}: ${rule.path}`;
-      add(blocked ? level : "INFO", channel, `robots.txt ${agent}`, `${target} — ${blocked ? "차단" : "허용"} (${evidence})`, skill);
+      add(blocked ? level : "INFO", channel, `robots.txt ${agent}`, `${target} — ${blocked ? t("차단", "Blocked") : t("허용", "Allowed")} (${evidence})`, skill);
     }
     if (wildcardRule) {
       const blocked = wildcardRule.type === "disallow";
       const names = wildcard.map(({ agent }) => agent).join(", ");
-      const msg = `${target} — ${blocked ? "차단" : "허용"} (User-agent: *, ${wildcardRule.type}: ${wildcardRule.path}). 적용 대상: ${names}`;
+      const msg = (currentLocale() === "en" ? `${target} — ${blocked ? t("차단", "Blocked") : t("허용", "Allowed")} (User-agent: *, ${wildcardRule.type}: ${wildcardRule.path}). Applies to: ${names}` : `${target} — ${blocked ? t("차단", "Blocked") : t("허용", "Allowed")} (User-agent: *, ${wildcardRule.type}: ${wildcardRule.path}). 적용 대상: ${names}`);
       if (blocked && pageNoindex && !expectIndexable) {
-        add("INFO", "공통", "비공개 상태", `${msg}. 페이지에도 noindex가 있어 공개 의도 확인 필요`, "seo-orchestrator");
+        add("INFO", t("공통", "General"), t("비공개 상태", "Private access"), (currentLocale() === "en" ? `${msg}. The page also declares noindex. Confirm whether it should be public` : `${msg}. 페이지에도 noindex가 있어 공개 의도 확인 필요`), "seo-orchestrator");
       } else {
         const level = ["FAIL", "WARN", "INFO"].find((severity) => wildcard.some((bot) => bot.level === severity));
-        add(blocked ? level : "INFO", "공통", "robots.txt *", msg, "google-search");
+        add(blocked ? level : "INFO", t("공통", "General"), "robots.txt *", msg, "google-search");
       }
     }
-    if (!blockedAi) add("INFO", "AI 검색", "robots.txt", `${target} — 점검 대상 AI 검색·사용자 요청 크롤러의 차단 규칙 없음. 실제 접근·노출은 별도 확인`, "ai-crawlers");
+    if (!blockedAi) add("INFO", t("AI 검색", "AI search"), "robots.txt", (currentLocale() === "en" ? `${target} — No blocking rule found for the AI search and user-request crawlers checked. Verify access and visibility separately` : `${target} — 점검 대상 AI 검색·사용자 요청 크롤러의 차단 규칙 없음. 실제 접근·노출은 별도 확인`), "ai-crawlers");
     const sitemaps = txt.split(/\r?\n/).filter((l) => /^\s*sitemap\s*:/i.test(l)).map((l) => l.slice(l.indexOf(":") + 1).trim()).filter(Boolean);
-    add(sitemaps.length ? "INFO" : "WARN", "공통", "robots.txt Sitemap", sitemaps.length ? sitemaps.join(", ") : "Sitemap: 줄 없음", "google-search");
-  } catch (e) { add("WARN", "공통", "robots.txt", `가져오기 실패: ${String(e.message).slice(0, 80)}`, "google-search"); }
+    add(sitemaps.length ? "INFO" : "WARN", t("공통", "General"), "robots.txt Sitemap", sitemaps.length ? sitemaps.join(", ") : t("Sitemap: 줄 없음", "Missing Sitemap: directive"), "google-search");
+  } catch (e) { add("WARN", t("공통", "General"), "robots.txt", (currentLocale() === "en" ? `Fetch failed: ${String(e.message).slice(0, 80)}` : `가져오기 실패: ${String(e.message).slice(0, 80)}`), "google-search"); }
 }
 
 export async function run(target, { expectIndexable = false, network } = {}) {
@@ -380,17 +382,17 @@ export async function run(target, { expectIndexable = false, network } = {}) {
     const page = await fetchPage(target, UA, network);
     const { status, chain, finalUrl } = page;
     baseUrl = finalUrl;
-    if (chain.length > 1) add("INFO", "공통", "리다이렉트", chain.map((c) => `${c.status} ${c.url}`).join(" → ") + ` → ${status}`, "google-search");
-    if (chain.some((c) => c.status === 302 || c.status === 307)) add("INFO", "공통", "리다이렉트", "임시 리다이렉트(302/307) 포함 — 영구 이전이면 301", "naver-search");
-    if (status !== 200) add(status >= 400 ? "FAIL" : "WARN", "공통", "HTTP 상태", `${status}`, "naver-search");
+    if (chain.length > 1) add("INFO", t("공통", "General"), t("리다이렉트", "Redirect"), chain.map((c) => `${c.status} ${c.url}`).join(" → ") + ` → ${status}`, "google-search");
+    if (chain.some((c) => c.status === 302 || c.status === 307)) add("INFO", t("공통", "General"), t("리다이렉트", "Redirect"), t("임시 리다이렉트(302/307) 포함 — 영구 이전이면 301", "Includes a temporary redirect (302/307). Use 301 for a permanent move"), "naver-search");
+    if (status !== 200) add(status >= 400 ? "FAIL" : "WARN", t("공통", "General"), t("HTTP 상태", "HTTP status"), `${status}`, "naver-search");
     html = page.html;
     const enc = page.headers["content-encoding"] || "";
-    if (!/gzip|deflate|br/i.test(enc)) add("INFO", "공유", "압축", "HTML 응답에 gzip/deflate 없음 — Meta 크롤러는 gzip·deflate 지원 요구", "social-preview");
+    if (!/gzip|deflate|br/i.test(enc)) add("INFO", t("공유", "Sharing"), t("압축", "Compression"), t("HTML 응답에 gzip/deflate 없음 — Meta 크롤러는 gzip·deflate 지원 요구", "HTML response lacks gzip or deflate. Meta crawlers require gzip or deflate support"), "social-preview");
     let lastOgIndex = -1;
     for (const tag of html.matchAll(/<meta\b[^>]*property\s*=\s*["']og:/gi)) lastOgIndex = tag.index;
     const lastOgByte = lastOgIndex < 0 ? 0 : Buffer.byteLength(html.slice(0, lastOgIndex));
-    if (lastOgByte > 1024 * 1024) add("WARN", "공유", "og 위치", `og 태그가 HTML ${Math.round(lastOgByte / 1024)}KB 지점 — Meta는 첫 1MB만 읽음`, "social-preview");
-    if (/http-equiv\s*=\s*["']?refresh/i.test(html)) add("WARN", "네이버", "meta refresh", "있음 — 네이버 소유 확인·수집에서 해석하지 않음. HTTP 리다이렉트 사용", "naver-search");
+    if (lastOgByte > 1024 * 1024) add("WARN", t("공유", "Sharing"), t("og 위치", "Open Graph position"), (currentLocale() === "en" ? `Open Graph tag at ${Math.round(lastOgByte / 1024)} KB in HTML. Meta reads the first 1 MB` : `og 태그가 HTML ${Math.round(lastOgByte / 1024)}KB 지점 — Meta는 첫 1MB만 읽음`), "social-preview");
+    if (/http-equiv\s*=\s*["']?refresh/i.test(html)) add("WARN", t("네이버", "Naver"), "meta refresh", t("있음 — 네이버 소유 확인·수집에서 해석하지 않음. HTTP 리다이렉트 사용", "Present. Naver does not interpret this for verification or crawling. Use an HTTP redirect"), "naver-search");
     const p = parseHtml(html);
     const { ogImage, pageNoindex } = checkPage(p, add, baseUrl, { robotsHeaders: page.robotsHeaders, expectIndexable });
     checkJsonLd(p.jsonLd, add);
@@ -401,7 +403,7 @@ export async function run(target, { expectIndexable = false, network } = {}) {
     const p = parseHtml(html);
     checkPage(p, add, null, { expectIndexable });
     checkJsonLd(p.jsonLd, add);
-    add("INFO", "공통", "범위", "로컬 파일: HTTP 헤더·robots.txt·리다이렉트·이미지 응답은 확인하지 않음", "seo-orchestrator");
+    add("INFO", t("공통", "General"), t("범위", "Scope"), t("로컬 파일: HTTP 헤더·robots.txt·리다이렉트·이미지 응답은 확인하지 않음", "Local file. HTTP headers, robots.txt, redirects and image responses were skipped"), "seo-orchestrator");
   }
   return { target, checkedAt: new Date().toISOString(), results };
 }
@@ -419,28 +421,49 @@ function toMarkdown({ target, checkedAt, results }) {
   const count = (l) => results.filter((r) => r.level === l).length;
   return [
     `## seo-check: ${target}`,
-    `확인 시각 ${checkedAt} · ❌ ${count("FAIL")} · ⚠️ ${count("WARN")} · ℹ️ ${count("INFO")}`,
+    (currentLocale() === "en" ? `Checked at ${checkedAt} · ❌ ${count("FAIL")} · ⚠️ ${count("WARN")} · ℹ️ ${count("INFO")}` : `확인 시각 ${checkedAt} · ❌ ${count("FAIL")} · ⚠️ ${count("WARN")} · ℹ️ ${count("INFO")}`),
     "",
-    "| 상태 | 채널 | 항목 | 내용 | Skill |",
+    t("| 상태 | 채널 | 항목 | 내용 | Skill |", "| Status | Channel | Check | Details | Skill |"),
     "| --- | --- | --- | --- | --- |",
     ...rows.map((r) => `| ${icon[r.level]} | ${r.channel} | ${r.item}${r.n > 1 ? ` ×${r.n}` : ""} | ${String(r.detail).replace(/\|/g, "\\|")} | ${r.skill} |`),
     "",
-    "단일 페이지 점검 결과입니다. 색인·순위·렌더링 결과는 Search Console·서치어드바이저 URL 검사로 확인하세요.",
+    t("단일 페이지 점검 결과입니다. 색인·순위·렌더링 결과는 Search Console·서치어드바이저 URL 검사로 확인하세요.", "This audit covers one page. Use URL inspection in Search Console or Naver Search Advisor to verify indexing, ranking and rendering."),
   ].join("\n");
 }
 
+async function main() {
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
+    options: {
+      lang: { type: "string" },
+      json: { type: "boolean" },
+      "expect-indexable": { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+  });
+  return withLocale(values.lang ?? "ko", async () => {
+    const help = t(
+      "사용법: node scripts/seo-check.mjs <URL | HTML 파일> [--json] [--expect-indexable] [--lang en|ko]",
+      "Usage: node scripts/seo-check.mjs <URL | HTML file> [--json] [--expect-indexable] [--lang en|ko]",
+    );
+    if (values.help) {
+      console.log(help);
+      return 0;
+    }
+    if (positionals.length !== 1) throw new Error(help);
+    try {
+      const report = await run(positionals[0], { expectIndexable: values["expect-indexable"] });
+      console.log(values.json ? JSON.stringify(report, null, 2) : toMarkdown(report));
+      return report.results.some((finding) => finding.level === "FAIL") ? 1 : 0;
+    } catch (error) {
+      throw new Error(t("오류: ", "Error: ") + error.message, { cause: error });
+    }
+  });
+}
+
 if (isCliEntry(import.meta.url)) {
-  const args = process.argv.slice(2);
-  const json = args.includes("--json");
-  const target = args.find((a) => !a.startsWith("--"));
-  if (!target) {
-    console.error("사용법: node scripts/seo-check.mjs <URL | HTML 파일> [--json] [--expect-indexable]");
-    process.exit(2);
-  }
-  run(target, { expectIndexable: args.includes("--expect-indexable") })
-    .then((r) => {
-      console.log(json ? JSON.stringify(r, null, 2) : toMarkdown(r));
-      process.exit(r.results.some((x) => x.level === "FAIL") ? 1 : 0);
-    })
-    .catch((e) => { console.error(`오류: ${e.message}`); process.exit(2); });
+  main().then(code => { process.exitCode = code; }).catch(error => {
+    console.error(error.message);
+    process.exitCode = 2;
+  });
 }
