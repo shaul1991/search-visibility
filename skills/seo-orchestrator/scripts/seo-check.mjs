@@ -328,6 +328,26 @@ export const ROBOT_AGENTS = [
   ["__usage_ai-training", "INFO", "ai-crawlers", "Microsoft AI 학습 제외(2027-02-01부터 반영)"],
 ];
 
+function reportHreflang(page, add, baseUrl) {
+  const alternates = [];
+  for (const { lang, href } of page.alternates) {
+    const absolute = href && /^https?:\/\//i.test(href) ? httpUrl(href) : null;
+    const url = absolute ? new URL(absolute) : null;
+    if (!lang || !url || url.username || url.password) {
+      add("WARN", t("다국어", "International"), "hreflang",
+        t("언어 코드와 인증정보 없는 HTTP(S) 절대 URL을 지정하세요.", "Supply a language code and an absolute HTTP(S) URL without credentials."), "google-search");
+      continue;
+    }
+    url.hash = "";
+    alternates.push({ lang, url: url.href });
+  }
+  if (page.alternates.length && !alternates.some(({ lang }) => lang === "x-default")) {
+    add("WARN", t("다국어", "International"), "hreflang x-default",
+      t("지원 언어에 일치하지 않는 사용자를 위한 기본 URL을 지정하세요.", "Declare a fallback URL for users whose language does not match."), "google-search");
+  }
+  return { alternates, url: baseUrl };
+}
+
 async function checkRobots(url, add, pageNoindex = false, expectIndexable = false, network) {
   try {
     const res = await fetchAuxiliary(new URL("/robots.txt", url), network);
@@ -341,10 +361,17 @@ async function checkRobots(url, add, pageNoindex = false, expectIndexable = fals
     const target = url.pathname + url.search;
     const path = normalizeRobotsPath(target);
     const wildcard = [];
+    const crawlers = [];
     let wildcardRule = null;
     let blockedAi = false;
     for (const [agent, level, skill] of ROBOT_AGENTS) {
       const { blocked, via, groupName, rule } = decideRobotsPath(groups, agent, path);
+      if (skill === "ai-crawlers") {
+        const purpose = level === "INFO" ? "training" : /-User$/i.test(agent) ? "user-request"
+          : agent === "Google-Extended" ? "grounding" : "search";
+        crawlers.push({ agent, purpose, decision: blocked ? "blocked" : "allowed", via,
+          rule: rule ? { type: rule.type, path: rule.path } : null });
+      }
       if (!rule) continue;
       if (blocked && level !== "INFO" && skill === "ai-crawlers") blockedAi = true;
       // 같은 * 규칙을 적용받는 봇은 한 줄에 표시한다.
@@ -369,18 +396,22 @@ async function checkRobots(url, add, pageNoindex = false, expectIndexable = fals
       }
     }
     if (!blockedAi) add("INFO", t("AI 검색", "AI search"), "robots.txt", (currentLocale() === "en" ? `${target} — No blocking rule found for the AI search and user-request crawlers checked. Verify access and visibility separately` : `${target} — 점검 대상 AI 검색·사용자 요청 크롤러의 차단 규칙 없음. 실제 접근·노출은 별도 확인`), "ai-crawlers");
-    const sitemaps = txt.split(/\r?\n/).filter((l) => /^\s*sitemap\s*:/i.test(l)).map((l) => l.slice(l.indexOf(":") + 1).trim()).filter(Boolean);
+    const sitemaps = [...txt.matchAll(/^\s*sitemap[ \t]*:[ \t]*([^#\r\n]+)/gim)]
+      .map(([, value]) => value.trim()).filter(Boolean);
     add(sitemaps.length ? "INFO" : "WARN", t("공통", "General"), "robots.txt Sitemap", sitemaps.length ? sitemaps.join(", ") : t("Sitemap: 줄 없음", "Missing Sitemap: directive"), "google-search");
+    if (!res.ok || /text\/html/i.test(ct)) return;
+    return { path: target, sitemaps, crawlers };
   } catch (e) { add("WARN", t("공통", "General"), "robots.txt", (currentLocale() === "en" ? `Fetch failed: ${String(e.message).slice(0, 80)}` : `가져오기 실패: ${String(e.message).slice(0, 80)}`), "google-search"); }
 }
 
 export async function run(target, { expectIndexable = false, network } = {}) {
   const results = [];
   const add = (level, channel, item, detail, skill) => results.push({ level, channel, item, detail, skill });
-  let html, baseUrl = null;
+  let html, baseUrl = null, robots, hreflang, status;
   if (/^https?:\/\//i.test(target)) {
     const page = await fetchPage(target, UA, network);
-    const { status, chain, finalUrl } = page;
+    const { chain, finalUrl } = page;
+    status = page.status;
     baseUrl = finalUrl;
     if (chain.length > 1) add("INFO", t("공통", "General"), t("리다이렉트", "Redirect"), chain.map((c) => `${c.status} ${c.url}`).join(" → ") + ` → ${status}`, "google-search");
     if (chain.some((c) => c.status === 302 || c.status === 307)) add("INFO", t("공통", "General"), t("리다이렉트", "Redirect"), t("임시 리다이렉트(302/307) 포함 — 영구 이전이면 301", "Includes a temporary redirect (302/307). Use 301 for a permanent move"), "naver-search");
@@ -397,15 +428,17 @@ export async function run(target, { expectIndexable = false, network } = {}) {
     const { ogImage, pageNoindex } = checkPage(p, add, baseUrl, { robotsHeaders: page.robotsHeaders, expectIndexable });
     checkJsonLd(p.jsonLd, add);
     if (ogImage && /^https?:/i.test(ogImage)) await checkImage(ogImage, add, network);
-    await checkRobots(new URL(baseUrl), add, pageNoindex, expectIndexable, network);
+    hreflang = reportHreflang(p, add, baseUrl);
+    robots = await checkRobots(new URL(baseUrl), add, pageNoindex, expectIndexable, network);
   } else {
     html = await readFile(target, "utf8");
     const p = parseHtml(html);
     checkPage(p, add, null, { expectIndexable });
+    hreflang = reportHreflang(p, add, null);
     checkJsonLd(p.jsonLd, add);
     add("INFO", t("공통", "General"), t("범위", "Scope"), t("로컬 파일: HTTP 헤더·robots.txt·리다이렉트·이미지 응답은 확인하지 않음", "Local file. HTTP headers, robots.txt, redirects and image responses were skipped"), "seo-orchestrator");
   }
-  return { target, checkedAt: new Date().toISOString(), results };
+  return { target, checkedAt: new Date().toISOString(), results, status, hreflang, robots };
 }
 
 function toMarkdown({ target, checkedAt, results }) {

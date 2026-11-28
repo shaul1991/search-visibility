@@ -97,6 +97,10 @@ function actionFor({ level, item, skill }) {
   if (/canonical/i.test(item)) {
     return t("문서 head와 HTTP 헤더의 canonical을 확인하고, 색인할 최종 URL 하나로 일치시키세요.", "Check the document head and HTTP headers and align canonical declarations to the single final URL you want indexed.");
   }
+  if (item.startsWith("hreflang")) {
+    return t("번역 페이지의 HTML 머리말에서 언어별 절대 URL, 반환 링크, 기본 URL을 확인하세요.",
+      "Check the language-specific absolute URLs, return links, and fallback URL in each translated page’s HTML head.");
+  }
   if (item === "robots meta" || /^x-robots-tag/i.test(item)) {
     return t("검색 노출이 필요한 페이지라면 최종 응답의 meta 및 HTTP 헤더에서 의도하지 않은 색인 제한을 제거하세요.", "If the page should appear in search, remove unintended indexing restrictions from the final response’s meta tags and HTTP headers.");
   }
@@ -198,6 +202,18 @@ function findingsList(results) {
   }).join("")}</ul>`;
 }
 
+function crawlerDetails(robots) {
+  if (!robots?.crawlers?.length) return "";
+  const purposes = {
+    search: t("검색", "Search"), training: t("학습", "Training"),
+    "user-request": t("사용자 요청", "User request"), grounding: t("답변 근거", "Grounding"),
+  };
+  return `<details><summary>${t("AI 크롤러의 robots.txt 규칙", "AI crawler rules in robots.txt")}</summary>
+    <ul>${robots.crawlers.map(({ agent, purpose, decision }) =>
+      `<li><code>${html(agent)}</code> · ${html(purposes[purpose])} · ${decision === "blocked" ? t("차단", "Blocked") : t("허용", "Allowed")}</li>`
+    ).join("")}</ul></details>`;
+}
+
 function pageDetails(page) {
   const results = page.results ?? [];
   if (page.error) {
@@ -207,6 +223,7 @@ function pageDetails(page) {
   const fails = results.filter((r) => r.level === "FAIL").length;
   const warnings = results.filter((r) => r.level === "WARN").length;
   return `<details class="audit-page" data-error="0" data-fails="${fails}" data-warnings="${warnings}"><summary>${html(page.target)} <small>· ${currentLocale() === "en" ? `${number(fails)} failures · ${number(warnings)} warnings` : `실패 ${fails}건 · 경고 ${warnings}건`}</small></summary>
+    ${crawlerDetails(page.robots)}
     ${results.length ? findingsList(results) : `<p>${t("수집된 진단 항목이 없습니다.", "No checks were collected.")}</p>`}</details>`;
 }
 

@@ -49,7 +49,7 @@ function* tokens(html) {
 export function parseHtml(html) {
   const page = {
     title: null, lang: null, meta: {}, metaTags: [], canonical: null, canonicalLinks: [], baseHref: null,
-    icons: [], jsonLd: [], anchors: [], bodyTextLength: 0, h1: [], verificationInBody: false,
+    alternates: [], icons: [], jsonLd: [], anchors: [], bodyTextLength: 0, h1: [], verificationInBody: false,
   };
   // In the HTML "after head" insertion mode, link/meta/base and other head
   // metadata are still inserted into head until body starts (even implicitly).
@@ -105,6 +105,9 @@ export function parseHtml(html) {
         break;
       case "link": {
         const rel = (attrs.rel || "").toLowerCase().split(/\s+/);
+        if (inHead && rel.includes("alternate") && attrs.hreflang !== undefined) {
+          page.alternates.push({ lang: attrs.hreflang.trim().toLowerCase(), href: attrs.href?.trim() });
+        }
         if (rel.includes("canonical")) {
           page.canonicalLinks.push({ href: attrs.href, inHead });
           if (inHead) page.canonical ??= attrs.href ?? null;

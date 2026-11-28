@@ -44,6 +44,8 @@ npm run visibility -- ./visibility.config.json
 
 You can also supply local HTML paths in `targets` or a sitemap URL in `sitemap`. Input paths resolve relative to the config file. Remote audits request the specified sites. Reports are written locally under `visibility-reports/`.
 
+When `sitemap` is omitted, the audit follows same-origin `Sitemap:` declarations found in the final target pages’ `robots.txt`. An explicit sitemap takes precedence. The audit runs up to four pages at a time and keeps the input and discovery order in the report. For multilingual pages, it checks HTML `hreflang` declarations for `x-default` and verifies return links between successfully audited URLs. The page report summarizes robots rules by AI crawler and purpose. These decisions describe the published rules for the final URL.
+
 Set top-level `"locale": "en"` in the config to keep English as the report language. `--lang en|ko` overrides the config. Korean is the default. Reports preserve original page text, CSV labels, and observed questions. For help in English, run `npm run visibility -- --help --lang en`. The standalone checker also accepts `--lang`.
 
 Use the [localized page audit guide](docs/localized-pages.en.md) to check canonical and indexability signals for language and regional variants.

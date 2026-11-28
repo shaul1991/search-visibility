@@ -6,6 +6,7 @@ import { fetchResource } from "./fetch-page.mjs";
 import { run, UA } from "./seo-check.mjs";
 
 const MAX_SITEMAPS = 10;
+const PAGE_CONCURRENCY = 4;
 const SITEMAP_BYTES = 2 * 1024 * 1024;
 const PAGE_BYTES = 4 * 1024 * 1024;
 const TIMEOUT_MS = 15_000;
@@ -73,17 +74,17 @@ function parseSitemap(xml) {
   return { type, locations };
 }
 
-async function discover(root, selected, report) {
-  const origin = root.origin;
-  const queue = [root.href];
+async function discover(roots, selected, report) {
+  const queue = roots.slice(0, MAX_SITEMAPS).map(url => url.href);
   const seen = new Set(queue);
-  let skipped = 0, cappedSitemaps = false;
+  let skipped = 0, cappedSitemaps = roots.length > MAX_SITEMAPS;
   while (queue.length) {
     if (selected.size >= report.limit) {
       report.truncated = true;
       break;
     }
     const target = queue.shift();
+    const origin = new URL(target).origin;
     try {
       const res = await fetchResource(target, UA, {
         allowedOrigin: origin, maxBytes: SITEMAP_BYTES, signal: AbortSignal.timeout(TIMEOUT_MS), accept: "application/xml,text/xml,*/*",
@@ -138,11 +139,22 @@ export async function auditSite({ targets = [], sitemap, baseDir = process.cwd()
     if (selected.size >= limit) report.truncated = true;
     else selected.set(source, { target: hasScheme ? source : target, local: !hasScheme });
   }
-  if (root) await discover(root, selected, report);
-  if (report.truncated && selected.size >= limit) report.warnings.push((currentLocale() === "en" ? `Selected up to ${limit} pages to audit. Split the targets across runs to cover the full set.` : `최대 ${limit}페이지까지 선택하여 점검했습니다. 전체 범위를 확인하려면 대상을 나눠 실행하세요.`));
-  if (root && !selected.size && !report.discoveryErrors.length) report.warnings.push(t("사이트맵에서 점검할 페이지를 찾지 못했습니다.", "The sitemap contained no pages to audit."));
+  const audited = new Map();
+  async function auditSelected() {
+    const pending = [...selected].filter(([source]) => !audited.has(source));
+    const pages = new Array(pending.length);
+    let next = 0;
+    async function worker() {
+      while (next < pending.length) {
+        const index = next++;
+        pages[index] = await auditPage(...pending[index]);
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(PAGE_CONCURRENCY, pending.length) }, worker));
+    pending.forEach(([source], index) => audited.set(source, pages[index]));
+  }
 
-  for (const [source, { target, local, allowedOrigin }] of selected) {
+  async function auditPage(source, { target, local, allowedOrigin }) {
     try {
       if (local) {
         const file = await stat(source);
@@ -150,10 +162,56 @@ export async function auditSite({ targets = [], sitemap, baseDir = process.cwd()
       }
       const network = { allowedOrigin, maxBytes: PAGE_BYTES, signal: AbortSignal.timeout(TIMEOUT_MS) };
       const page = await run(source, { expectIndexable, network });
-      report.pages.push({ ...page, target });
+      return { ...page, target };
     } catch (error) {
-      report.pages.push({ target, results: [], error: error.message });
+      return { target, results: [], error: error.message };
     }
   }
+  if (root) {
+    await discover([root], selected, report);
+  } else {
+    await auditSelected();
+    const roots = new Map();
+    for (const page of audited.values()) {
+      const finalUrl = page.hreflang?.url;
+      for (const value of page.robots?.sitemaps ?? []) {
+        let url;
+        try { url = webUrl(value); } catch { continue; }
+        if (url.origin === new URL(finalUrl).origin) roots.set(url.href, url);
+      }
+    }
+    if (roots.size) await discover([...roots.values()], selected, report);
+  }
+  if (report.truncated && selected.size >= limit) report.warnings.push((currentLocale() === "en" ? `Selected up to ${limit} pages to audit. Split the targets across runs to cover the full set.` : `최대 ${limit}페이지까지 선택하여 점검했습니다. 전체 범위를 확인하려면 대상을 나눠 실행하세요.`));
+  if (root && !selected.size && !report.discoveryErrors.length) report.warnings.push(t("사이트맵에서 점검할 페이지를 찾지 못했습니다.", "The sitemap contained no pages to audit."));
+  await auditSelected();
+  report.pages = [...audited.values()];
+  checkReciprocity(report.pages);
   return report;
+}
+
+function checkReciprocity(pages) {
+  const byUrl = new Map();
+  for (const page of pages) {
+    if (page.status !== 200 || !page.hreflang.url) continue;
+    const url = new URL(page.hreflang.url);
+    url.hash = "";
+    byUrl.set(url.href, page);
+  }
+  for (const [source, page] of byUrl) {
+    const languages = new Set(page.hreflang.alternates.filter(link => link.url === source).map(link => link.lang));
+    if (languages.size > 1) languages.delete("x-default");
+    for (const target of new Set(page.hreflang.alternates.map(link => link.url))) {
+      const alternate = byUrl.get(target);
+      if (!alternate || target === source) continue;
+      const linksBack = alternate.hreflang.alternates.some(link =>
+        link.url === source && (!languages.size || languages.has(link.lang)));
+      if (!linksBack) page.results.push({
+        level: "WARN", channel: t("다국어", "International"), item: "hreflang reciprocity",
+        detail: t(`${target} 페이지에 ${source}의 언어에 맞는 hreflang 반환 링크가 없습니다.`,
+          `${target} has no hreflang return link to ${source} for the source language.`),
+        skill: "google-search",
+      });
+    }
+  }
 }

@@ -20,7 +20,7 @@ npm run demo
 
 출력된 `index.html`을 브라우저에서 열면 됩니다. 실행 전에 화면을 보려면 [샘플 HTML 보고서를 다운로드](https://github.com/shaul1991/search-visibility/releases/download/v0.5.0/search-visibility-demo.html)해 여세요. 예제에는 로컬 HTML 두 개, 합성 검색 성과 CSV, 합성 답변 세 건이 들어 있습니다. 실제 사이트를 점검할 때는 URL 목록이나 사이트맵을 지정하세요. 본인의 Search Console 내보내기와 직접 수집한 답변을 선택적으로 추가할 수 있습니다. [실제 데이터로 실행하기](docs/workbench.ko.md) · [참고한 공개 프로젝트 21개](docs/landscape.ko.md)
 
-설정 없이 한 페이지를 점검하려면 저장소에서 아래 명령의 예시 URL을 색인 대상 페이지 주소로 바꿔 실행하세요. `--url https://example.org/` 형식도 지원합니다.
+설정 없이 URL에서 점검을 시작하려면 저장소에서 아래 명령의 예시 URL을 색인 대상 페이지 주소로 바꿔 실행하세요. `--url https://example.org/` 형식도 지원합니다.
 
 ```bash
 npm run visibility -- https://example.org/
@@ -34,6 +34,8 @@ npm run visibility -- ./visibility.config.json
 ```
 
 보고서의 심각도 배지에서 실패·경고 건수를 확인하고, 페이지 진단에서 심각도를 필터링하거나 우선순위순으로 정렬할 수 있습니다. 주요 문제에는 조치 방법이 표시됩니다. 요약은 클립보드로 복사할 수 있고, 인쇄 또는 PDF 저장 시 접힌 진단과 근거도 포함됩니다.
+
+`sitemap`을 생략하면 최종 대상 URL의 `robots.txt`에서 같은 출처의 `Sitemap:` 선언을 찾아 점검 대상을 추가합니다. 설정에 사이트맵을 지정하면 해당 사이트맵을 우선합니다. 한 번에 최대 4페이지를 점검하고 보고서는 입력·발견 순서를 유지합니다. 다국어 페이지는 HTML `hreflang`의 `x-default` 선언과 점검에 성공한 URL 사이의 반환 링크를 확인합니다. 페이지별 보고서에는 최종 URL에 적용되는 AI 크롤러별 검색·학습·사용자 요청 등의 robots 규칙이 표시됩니다.
 
 한국어가 기본입니다. 영문 CLI와 HTML 보고서는 `npm run demo -- --lang en`으로 확인할 수 있습니다. 설정 최상위에 `"locale": "en"`을 저장할 수 있으며, 실행 시 지정한 `--lang en|ko`가 설정값에 우선합니다. 페이지 제목, CSV 항목, 관측 질문 등 원본 데이터는 그대로 표시됩니다. 독립 실행 `seo-check`에서도 `--lang`을 사용할 수 있습니다.
 
