@@ -1,8 +1,8 @@
 # Import a localized Search Console CSV
 
 1. In Google Search Console, open **Performance → Search results** for a property you can access. Choose the date range, search type, country and device filters, then export as CSV.
-2. Unzip the export if needed. Pick one Queries, Pages, or Dates table. For an export in another language, rename the three needed headers to `Queries`, `Pages`, or `Date` (pick one), plus `Clicks` and `Impressions`. Keep the query text and URLs in their original form.
-3. Save as UTF-8 with commas between columns. Convert locally formatted counts such as `1 200` or `1.200` to plain digits (`1200`) if those separators mean thousands in your export. Put fields containing a comma inside double quotes. Set `searchConsole` in your configuration to the CSV path relative to the configuration file.
+2. Unzip the export if needed and pick one Queries, Pages, or Dates table. The CLI recognizes English, Korean, Japanese, German, French, and Spanish headers. For other languages, rename the dimension column to `Queries`, `Pages`, or `Date` and the two metrics to `Clicks` and `Impressions`. Keep the original query text and URLs.
+3. Use UTF-8 with or without a BOM. The CLI detects commas or semicolons from the header. Quote fields that contain the chosen delimiter. Counts accept plain digits or consistent three-digit thousands groups separated by commas, periods, spaces, nonbreaking spaces, or narrow nonbreaking spaces. For a comma-delimited file, quote a count such as `"1,200"`. The CLI derives CTR from totals, so optional fields such as `12,5 %` and decimal position values can stay as exported. Set `searchConsole` to the CSV path relative to the configuration file.
 
 From the repository root, run the [synthetic page example](../examples/search-console/pages.csv):
 
