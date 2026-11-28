@@ -1,5 +1,17 @@
+import { currentLocale, t, withLocale } from "./locale.mjs";
+
 const escapeChars = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-const percent = new Intl.NumberFormat("ko-KR", { style: "percent", maximumFractionDigits: 1 });
+const formats = Object.fromEntries(["ko", "en"].map((locale) => {
+  const tag = locale === "ko" ? "ko-KR" : "en-US";
+  return [locale, {
+    percent: new Intl.NumberFormat(tag, { style: "percent", maximumFractionDigits: 1 }),
+    number: new Intl.NumberFormat(tag),
+  }];
+}));
+
+function number(value) {
+  return formats[currentLocale()].number.format(value);
+}
 
 function html(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => escapeChars[char]);
@@ -70,112 +82,117 @@ function findingsList(results) {
     const tone = entry.level === "FAIL" ? " fail" : entry.level === "WARN" ? " warn" : "";
     return `<li><span class="tag${tone}">${html(entry.level)}</span>
       <strong>${html(entry.item)}</strong> <span class="muted">${html(entry.channel)}</span>
-      <p>${html(entry.detail)}</p>${entry.skill ? `<small>관련 스킬 <code>${html(entry.skill)}</code></small>` : ""}</li>`;
+      <p>${html(entry.detail)}</p>${entry.skill ? `<small>${t("관련 스킬", "Related skill")} <code>${html(entry.skill)}</code></small>` : ""}</li>`;
   }).join("")}</ul>`;
 }
 
 function pageDetails(page) {
   const results = page.results ?? [];
   if (page.error) {
-    return `<details open><summary>${html(page.target)} <small>· 점검 오류</small></summary>
+    return `<details open><summary>${html(page.target)} <small>· ${t("점검 오류", "Audit error")}</small></summary>
       <p class="notice">${html(page.error)}</p></details>`;
   }
   const fails = results.filter((r) => r.level === "FAIL").length;
   const warnings = results.filter((r) => r.level === "WARN").length;
-  return `<details><summary>${html(page.target)} <small>· 실패 ${fails}건 · 경고 ${warnings}건</small></summary>
-    ${results.length ? findingsList(results) : "<p>수집된 진단 항목이 없습니다.</p>"}</details>`;
+  return `<details><summary>${html(page.target)} <small>· ${currentLocale() === "en" ? `${number(fails)} failures · ${number(warnings)} warnings` : `실패 ${fails}건 · 경고 ${warnings}건`}</small></summary>
+    ${results.length ? findingsList(results) : `<p>${t("수집된 진단 항목이 없습니다.", "No checks were collected.")}</p>`}</details>`;
 }
 
 function siteSection(site) {
   const notices = site.warnings ?? [];
   const discoveryErrors = site.discoveryErrors ?? [];
-  return `<section aria-labelledby="pages"><h2 id="pages">페이지별 기술 진단</h2>
-    ${notices.length ? `<div class="notice"><strong>점검 범위 안내</strong><ul>${notices.map((s) => `<li>${html(s)}</li>`).join("")}</ul></div>` : ""}
-    ${site.truncated ? `<p class="note">수집 상한에 도달해 일부 대상만 점검했습니다.</p>` : ""}
-    ${discoveryErrors.length ? `<details><summary>사이트맵 수집 오류 ${discoveryErrors.length}건</summary>
+  return `<section aria-labelledby="pages"><h2 id="pages">${t("페이지별 기술 진단", "Technical checks by page")}</h2>
+    ${notices.length ? `<div class="notice"><strong>${t("점검 범위 안내", "Audit scope")}</strong><ul>${notices.map((s) => `<li>${html(s)}</li>`).join("")}</ul></div>` : ""}
+    ${site.truncated ? `<p class="note">${t("수집 상한에 도달해 일부 대상만 점검했습니다.", "The collection limit was reached. Only some targets were audited.")}</p>` : ""}
+    ${discoveryErrors.length ? `<details><summary>${currentLocale() === "en" ? `Sitemap collection errors: ${number(discoveryErrors.length)}` : `사이트맵 수집 오류 ${discoveryErrors.length}건`}</summary>
       <ul>${discoveryErrors.map((entry) => `<li>${html(entry.target)} · ${html(entry.error)}</li>`).join("")}</ul></details>` : ""}
-    ${site.pages.length ? site.pages.map(pageDetails).join("") : "<p>이번 실행에서 점검한 페이지가 없습니다.</p>"}</section>`;
+    ${site.pages.length ? site.pages.map(pageDetails).join("") : `<p>${t("이번 실행에서 점검한 페이지가 없습니다.", "No pages were audited in this run.")}</p>`}</section>`;
 }
 
 function rateText(rate) {
-  return Number.isFinite(rate) ? percent.format(rate) : "측정 안 됨";
+  return Number.isFinite(rate) ? formats[currentLocale()].percent.format(rate) : t("측정 안 됨", "Not measured");
 }
 
 function countText(count, sample, rate) {
-  if (!sample) return "관측 답변 없음";
-  if (!Number.isFinite(rate)) return "측정 안 됨";
-  return `${html(count)} / ${html(sample)}개 답변`;
+  if (!sample) return t("관측 답변 없음", "No observed answers");
+  if (!Number.isFinite(rate)) return t("측정 안 됨", "Not measured");
+  return `${number(count)} / ${number(sample)}${t("개 답변", " answers")}`;
 }
 
 function rateCell(rate, count, sample) {
-  if (!Number.isFinite(rate) || !sample) return "측정 안 됨";
-  return `${rateText(rate)} (${html(count)}/${html(sample)})`;
+  if (!Number.isFinite(rate) || !sample) return t("측정 안 됨", "Not measured");
+  return `${rateText(rate)} (${number(count)}/${number(sample)})`;
 }
 
 function observationRow(record) {
-  const mentions = record.mentioned ? "브랜드 언급 있음" : "브랜드 언급 없음";
-  const citation = record.cited == null ? "소유 출처 인용 측정 안 됨" : record.cited ? "소유 출처 인용 있음" : "소유 출처 인용 없음";
+  const mentions = record.mentioned ? t("브랜드 언급 있음", "Brand mentioned") : t("브랜드 언급 없음", "Brand absent");
+  const citation = record.cited == null ? t("소유 출처 인용 측정 안 됨", "Owned citations not measured") : record.cited ? t("소유 출처 인용 있음", "Owned source cited") : t("소유 출처 인용 없음", "No owned source cited");
   const context = [record.model, record.locale].filter(Boolean).map(html).join(" · ");
   const matched = new Set(record.matchedSources ?? []);
   const sources = new Set([...(record.sources ?? []), ...matched]);
   return `<details><summary>${html(record.engine)} · ${html(record.query)}</summary>
-    <p class="muted">관측 시각 <time>${html(record.observedAt)}</time>${context ? ` · ${context}` : ""}</p>
+    <p class="muted">${t("관측 시각", "Observed at")} <time>${html(record.observedAt)}</time>${context ? ` · ${context}` : ""}</p>
     <p>${mentions}${record.matchedTerms?.length ? ` (${record.matchedTerms.map(html).join(", ")})` : ""} · ${citation}</p>
-    ${sources.size ? `<p>답변의 인용 출처</p><ul>${[...sources].map((s) => `<li>${sourceLink(s)}${matched.has(s) ? " · 소유 출처" : ""}</li>`).join("")}</ul>` : "<p>기록한 인용 출처가 없습니다.</p>"}
-    ${record.evidenceUrl ? `<p>답변 근거 링크 · ${sourceLink(record.evidenceUrl)}</p>` : ""}</details>`;
+    ${sources.size ? `<p>${t("답변의 인용 출처", "Sources cited in the answer")}</p><ul>${[...sources].map((s) => `<li>${sourceLink(s)}${matched.has(s) ? t(" · 소유 출처", " · Owned source") : ""}</li>`).join("")}</ul>` : `<p>${t("기록한 인용 출처가 없습니다.", "No citations were recorded.")}</p>`}
+    ${record.evidenceUrl ? `<p>${t("답변 근거 링크", "Answer evidence")} · ${sourceLink(record.evidenceUrl)}</p>` : ""}</details>`;
 }
 
 function observationSection(ai) {
   if (!ai.sampleSize) {
-    return '<section aria-labelledby="answers"><h2 id="answers">AI 답변 관측</h2><p>기록한 답변이 없습니다. 관측한 질문·답변과 인용 URL을 추가하면 엔진별 결과를 볼 수 있습니다.</p></section>';
+    return `<section aria-labelledby="answers"><h2 id="answers">${t("AI 답변 관측", "AI answer observations")}</h2><p>${t("기록한 답변이 없습니다. 관측한 질문·답변과 인용 URL을 추가하면 엔진별 결과를 볼 수 있습니다.", "No answers were recorded. Add observed questions, answers and citation URLs to see results by engine.")}</p></section>`;
   }
-  return `<section aria-labelledby="answers"><h2 id="answers">AI 답변 관측</h2>
-    <p>입력한 답변 ${html(ai.sampleSize)}개를 기준으로 브랜드 언급과 소유 출처 인용을 집계합니다.</p>
-    ${ai.citationRate == null ? '<p class="notice">인용을 집계할 도메인이나 계정 URL 경로가 지정되지 않았습니다.</p>' : ""}
-    <table><caption>엔진별 관측 결과</caption><thead><tr><th scope="col">엔진</th><th scope="col">답변 수</th><th scope="col">브랜드 언급률</th><th scope="col">소유 출처 인용률</th></tr></thead><tbody>
-    ${ai.byEngine.map((row) => `<tr><th scope="row">${html(row.engine)}</th><td>${html(row.sampleSize)}</td>
+  return `<section aria-labelledby="answers"><h2 id="answers">${t("AI 답변 관측", "AI answer observations")}</h2>
+    <p>${currentLocale() === "en" ? `Brand mentions and owned-source citations are counted across ${number(ai.sampleSize)} supplied answers.` : `입력한 답변 ${html(ai.sampleSize)}개를 기준으로 브랜드 언급과 소유 출처 인용을 집계합니다.`}</p>
+    ${ai.citationRate == null ? `<p class="notice">${t("인용을 집계할 도메인이나 계정 URL 경로가 지정되지 않았습니다.", "Specify domains or account URL prefixes to measure owned citations.")}</p>` : ""}
+    <table><caption>${t("엔진별 관측 결과", "Observations by engine")}</caption><thead><tr><th scope="col">${t("엔진", "Engine")}</th><th scope="col">${t("답변 수", "Answers")}</th><th scope="col">${t("브랜드 언급률", "Brand mention rate")}</th><th scope="col">${t("소유 출처 인용률", "Owned-source citation rate")}</th></tr></thead><tbody>
+    ${ai.byEngine.map((row) => `<tr><th scope="row">${html(row.engine)}</th><td>${number(row.sampleSize)}</td>
       <td>${rateCell(row.mentionRate, row.mentions, row.sampleSize)}</td>
       <td>${rateCell(row.citationRate, row.citations, row.sampleSize)}</td></tr>`).join("")}</tbody></table>
-    <h3>질문별 근거</h3>${ai.records.map(observationRow).join("")}</section>`;
+    <h3>${t("질문별 근거", "Evidence by question")}</h3>${ai.records.map(observationRow).join("")}</section>`;
 }
 
 function searchSection(performance) {
-  const heading = '<h2 id="search">Google 검색 실적</h2>';
+  const heading = `<h2 id="search">${t("Google 검색 실적", "Google Search performance")}</h2>`;
   if (!performance || !performance.rowCount) {
-    const message = performance ? "가져온 CSV에 집계할 행이 없습니다." : "Search Console 실적 CSV를 추가하면 노출과 클릭을 확인할 수 있습니다.";
+    const message = performance ? t("가져온 CSV에 집계할 행이 없습니다.", "The imported CSV has no rows.") : t("Search Console 실적 CSV를 추가하면 노출과 클릭을 확인할 수 있습니다.", "Add a Search Console performance CSV to see impressions and clicks.");
     return `<section aria-labelledby="search">${heading}<p>${message}</p></section>`;
   }
 
-  const labels = { page: "페이지", query: "검색어", date: "날짜" };
-  const dimension = labels[performance.dimension] ?? "항목";
+  const labels = { page: t("페이지", "Page"), query: t("검색어", "Query"), date: t("날짜", "Date") };
+  const dimension = labels[performance.dimension] ?? t("항목", "Entry");
   const ordered = [...performance.rows].sort((a, b) => b.impressions - a.impressions || b.clicks - a.clicks);
   const top = ordered.slice(0, 10);
   return `<section aria-labelledby="search">${heading}
-    <p>가져온 CSV의 ${html(dimension)}별 ${html(performance.rowCount)}개 행을 합산했습니다.</p>
+    <p>${currentLocale() === "en" ? `Totals cover ${number(performance.rowCount)} imported CSV rows grouped by ${html(dimension.toLowerCase())}.` : `가져온 CSV의 ${html(dimension)}별 ${html(performance.rowCount)}개 행을 합산했습니다.`}</p>
     <dl class="metrics">
-      <div><dt>노출</dt><dd>${html(performance.impressions)}회</dd></div>
-      <div><dt>클릭</dt><dd>${html(performance.clicks)}회</dd></div>
-      <div><dt>클릭률</dt><dd>${rateText(performance.ctr)}</dd></div>
-    </dl><table><caption>노출 순 ${html(dimension)} ${top.length}개</caption>
-    <thead><tr><th scope="col">${html(dimension)}</th><th scope="col">노출</th><th scope="col">클릭</th></tr></thead>
-    <tbody>${top.map((row) => `<tr><th scope="row">${html(row.label)}</th><td>${html(row.impressions)}</td><td>${html(row.clicks)}</td></tr>`).join("")}</tbody>
+      <div><dt>${t("노출", "Impressions")}</dt><dd>${number(performance.impressions)}${t("회", "")}</dd></div>
+      <div><dt>${t("클릭", "Clicks")}</dt><dd>${number(performance.clicks)}${t("회", "")}</dd></div>
+      <div><dt>${t("클릭률", "CTR")}</dt><dd>${rateText(performance.ctr)}</dd></div>
+    </dl><table><caption>${currentLocale() === "en" ? `Top ${number(top.length)} entries by impressions` : `노출 순 ${html(dimension)} ${top.length}개`}</caption>
+    <thead><tr><th scope="col">${html(dimension)}</th><th scope="col">${t("노출", "Impressions")}</th><th scope="col">${t("클릭", "Clicks")}</th></tr></thead>
+    <tbody>${top.map((row) => `<tr><th scope="row">${html(row.label)}</th><td>${number(row.impressions)}</td><td>${number(row.clicks)}</td></tr>`).join("")}</tbody>
     </table></section>`;
 }
 
-export function renderReport({ brand, generatedAt, site, ai, searchPerformance, sample = false }) {
+export function renderReport(report) {
+  return withLocale(report.locale ?? "ko", () => renderLocalizedReport(report));
+}
+
+function renderLocalizedReport({ brand, generatedAt, site, ai, searchPerformance, sample = false }) {
   const failedPages = site.pages.filter((p) => p.error).length;
-  const brandTitle = brand ? `${html(brand)} 검색 가시성` : "검색 가시성";
+  const title = t("검색 가시성 보고서", "Search Visibility Report");
+  const brandTitle = brand ? `${html(brand)}${t(" ", " · ")}${title}` : title;
   return `<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="${currentLocale()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
-<title>${brandTitle} 보고서 · Search Visibility</title><style>${styles}</style></head>
-<body><header><div class="sheet"><div class="product" lang="en">Search Visibility</div><h1>${brandTitle} 보고서</h1>
-${sample === true ? '<p class="sample">이 보고서는 합성 예시 데이터로 생성했습니다.</p>' : ""}
-<p>생성 시각 <time>${html(generatedAt)}</time></p></div></header>
-<main class="sheet"><nav aria-label="보고서 섹션"><a href="#pages">페이지 진단</a><a href="#search">Google 검색 실적</a><a href="#answers">AI 답변 관측</a></nav>
-<section aria-labelledby="overview"><h2 id="overview">점검 요약</h2><dl class="metrics">
-  <div><dt>페이지 점검 완료</dt><dd>${site.pages.length - failedPages}개<small>대상 ${site.pages.length}개 · 점검 오류 ${failedPages}개</small></dd></div>
-  <div><dt>브랜드 언급률</dt><dd>${rateText(ai.mentionRate)}<small>${countText(ai.mentions, ai.sampleSize, ai.mentionRate)}</small></dd></div>
-  <div><dt>소유 출처 인용률</dt><dd>${rateText(ai.citationRate)}<small>${countText(ai.citations, ai.sampleSize, ai.citationRate)}</small></dd></div>
+<title>${brandTitle} · Search Visibility</title><style>${styles}</style></head>
+<body><header><div class="sheet"><div class="product" lang="en">Search Visibility</div><h1>${brandTitle}</h1>
+${sample === true ? `<p class="sample">${t("이 보고서는 합성 예시 데이터로 생성했습니다.", "This report uses synthetic sample data.")}</p>` : ""}
+<p>${t("생성 시각", "Generated at")} <time>${html(generatedAt)}</time></p></div></header>
+<main class="sheet"><nav aria-label="${t("보고서 섹션", "Report sections")}"><a href="#pages">${t("페이지 진단", "Page audit")}</a><a href="#search">${t("Google 검색 실적", "Google Search performance")}</a><a href="#answers">${t("AI 답변 관측", "AI answer observations")}</a></nav>
+<section aria-labelledby="overview"><h2 id="overview">${t("점검 요약", "Overview")}</h2><dl class="metrics">
+  <div><dt>${t("페이지 점검 완료", "Pages audited")}</dt><dd>${number(site.pages.length - failedPages)}${t("개", "")}<small>${currentLocale() === "en" ? `${number(site.pages.length)} targets · ${number(failedPages)} audit errors` : `대상 ${number(site.pages.length)}개 · 점검 오류 ${number(failedPages)}개`}</small></dd></div>
+  <div><dt>${t("브랜드 언급률", "Brand mention rate")}</dt><dd>${rateText(ai.mentionRate)}<small>${countText(ai.mentions, ai.sampleSize, ai.mentionRate)}</small></dd></div>
+  <div><dt>${t("소유 출처 인용률", "Owned-source citation rate")}</dt><dd>${rateText(ai.citationRate)}<small>${countText(ai.citations, ai.sampleSize, ai.citationRate)}</small></dd></div>
 </dl></section>${siteSection(site)}${searchSection(searchPerformance)}${observationSection(ai)}</main></body></html>\n`;
 }

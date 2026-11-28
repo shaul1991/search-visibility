@@ -1,3 +1,4 @@
+import { t } from "./locale.mjs";
 // A bot-scoped noindex only applies to that bot. Keep every rule and its source
 // so a later "index" cannot conceal an earlier restriction (or vice versa).
 const metaScopes = new Set(["robots", "googlebot", "googlebot-news", "googlebot-image", "yeti", "bingbot", "applebot", "duckduckbot", "daum"]);
@@ -40,8 +41,8 @@ export function reportIndexing(rules, add, expectIndexable) {
     const excluded = /^(?:noindex|none)$/.test(value);
     if (excluded && scope === "robots") genericNoindex = true;
     const level = excluded ? (expectIndexable ? "FAIL" : "WARN") : "INFO";
-    const detail = `${scope}: ${value}` + (excluded ? " — 색인 제외 지시" : "");
-    add(level, scope === "robots" ? "공통" : scope, source === "meta" ? "robots meta" : source, detail, "google-search");
+    const detail = `${scope}: ${value}` + (excluded ? t(" — 색인 제외 지시", " — indexing excluded by directive") : "");
+    add(level, scope === "robots" ? t("공통", "General") : scope, source === "meta" ? "robots meta" : source, detail, "google-search");
   }
   return genericNoindex;
 }

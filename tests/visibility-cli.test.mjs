@@ -83,8 +83,58 @@ test("both CLIs run through a symlinked skill directory", async t => {
 
   const page = fileURLToPath(new URL("./fixtures/good.html", import.meta.url));
   const audit = spawnSync(process.execPath, [
-    join(skillLink, "scripts", "seo-check.mjs"), page, "--json",
+    join(skillLink, "scripts", "seo-check.mjs"), page, "--json", "--lang", "en",
   ], {cwd, encoding: "utf8", timeout: 15000});
   assert.equal(audit.status, 0, audit.stderr);
-  assert.ok(JSON.parse(audit.stdout).results.length);
+  const { results } = JSON.parse(audit.stdout);
+  assert.ok(results.some(finding => finding.channel === "General" && finding.item === "Scope"));
+});
+
+test("language precedence localizes output while preserving measurements and input text", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-language-"));
+  t.after(() => rm(cwd, {recursive: true, force: true}));
+  await writeFile(join(cwd, "page.html"), "<html lang=ko><title>쿠버네티스</title>");
+  await writeFile(join(cwd, "search.csv"), "\uFEFF검색어,클릭수,노출수\n쿠버네티스,123,1234\n");
+  await writeFile(join(cwd, "config.json"), JSON.stringify({
+    locale: "en", targets: ["page.html"], searchConsole: "search.csv",
+  }));
+
+  const reports = [];
+  for (const lang of ["en", "ko"]) {
+    const flags = lang === "en" ? [] : ["--lang=ko"];
+    const result = run(cwd, "config.json", "--out", lang, ...flags);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, lang === "en" ? /Pages: 1/ : /페이지 1개/);
+    const json = JSON.parse(await readFile(join(cwd, lang, "report.json"), "utf8"));
+    const html = await readFile(join(cwd, lang, "index.html"), "utf8");
+    assert.equal(json.locale, lang);
+    assert.match(html, new RegExp(`<html lang="${lang}">`));
+    assert.match(html, lang === "en" ? /Technical checks by page/ : /페이지별 기술 진단/);
+    assert.match(html, /1,234/);
+    assert.match(html, /쿠버네티스/);
+    const image = json.site.pages[0].results.find(finding => finding.item === "og:image");
+    assert.equal(image.detail, lang === "en" ? "Missing" : "없음");
+    const canonical = json.site.pages[0].results.find(finding => finding.item === "canonical");
+    assert.equal(canonical.channel, lang === "en" ? "General" : "공통");
+    assert.equal(canonical.detail, lang === "en" ? "Missing" : "없음");
+    reports.push(json);
+  }
+
+  assert.deepEqual(reports[0].searchPerformance, reports[1].searchPerformance);
+  assert.deepEqual(reports[0].ai, reports[1].ai);
+  const levels = report => report.site.pages[0].results.map(finding => [finding.level, finding.skill]);
+  assert.deepEqual(levels(reports[0]), levels(reports[1]));
+});
+
+test("language help and validation work before collecting inputs", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-language-validation-"));
+  t.after(() => rm(cwd, {recursive: true, force: true}));
+  assert.match(run(cwd, "--help").stdout, /사용법/);
+  assert.match(run(cwd, "--help", "--lang", "en").stdout, /Usage:/);
+  assert.equal(run(cwd, "--help", "--lang", "de").status, 2);
+  await writeFile(join(cwd, "config.json"), JSON.stringify({locale: null}));
+  assert.match(run(cwd, "config.json").stderr, /Language must be en or ko/);
+  await writeFile(join(cwd, "config.json"), JSON.stringify({locale: "en", searchConsole: 42}));
+  assert.match(run(cwd, "config.json").stderr, /searchConsole must be a CSV file path/);
+  assert.match(run(cwd, "config.json", "--lang", "ko").stderr, /CSV 파일 경로가 필요합니다/);
 });

@@ -1,3 +1,5 @@
+import { currentLocale, t } from "./locale.mjs";
+
 // 서버 HTML에 실제로 선언된 메타데이터만 읽습니다. JavaScript를 실행하지 않습니다.
 const HEAD_ELEMENTS = new Set("html head base basefont bgsound link meta noframes noscript script style template title".split(" "));
 const RAW_TEXT = new Set("script style title textarea iframe xmp noembed noframes noscript".split(" "));
@@ -168,12 +170,12 @@ function canonicalTargetsCanAgree(values, scheme) {
 
 // 한 개의 유효한 대상을 확인했을 때만 OG나 최종 응답 URL과 대조합니다.
 export function checkCanonical(page, add, pageUrl) {
-  const report = (level, detail) => add(level, "공통", "canonical", detail, "google-search");
+  const report = (level, detail) => add(level, t("공통", "General"), "canonical", detail, "google-search");
   const links = page.canonicalLinks ?? (page.canonical ? [{ href: page.canonical, inHead: true }] : []);
   const headLinks = links.filter(link => link.inHead);
-  if (links.length > headLinks.length) report("FAIL", "<head> 밖의 canonical 선언은 무시됨");
+  if (links.length > headLinks.length) report("FAIL", t("<head> 밖의 canonical 선언은 무시됨", "Canonical declarations outside <head> are ignored"));
   if (!headLinks.length) {
-    if (!links.length) report("WARN", "없음");
+    if (!links.length) report("WARN", t("없음", "Missing"));
     return null;
   }
 
@@ -183,32 +185,34 @@ export function checkCanonical(page, add, pageUrl) {
   for (const { href } of headLinks) {
     const value = href?.trim();
     if (!value) {
-      report("FAIL", "href가 없거나 비어 있음");
+      report("FAIL", t("href가 없거나 비어 있음", "Missing or empty href"));
       continue;
     }
     const relative = !/^[a-z][a-z\d+.\-]*:/i.test(value);
     const url = httpUrl(value, base);
     if (relative && !base && httpUrl(value, "https://example.invalid/")) {
-      report("WARN", `상대 경로: ${value} (기준 URL이 없어 최종 주소 미확인)`);
+      report("WARN", currentLocale() === "en" ? `Relative path: ${value} (no base URL to resolve it)` : `상대 경로: ${value} (기준 URL이 없어 최종 주소 미확인)`);
       unresolved.add(value);
     } else if (!url) {
-      report("FAIL", `잘못된 HTTP(S) URL: ${value}`);
+      report("FAIL", currentLocale() === "en" ? `Invalid HTTP(S) URL: ${value}` : `잘못된 HTTP(S) URL: ${value}`);
     } else {
-      if (relative) report("WARN", `상대 경로: ${value} → ${url}`);
+      if (relative) report("WARN", `${t("상대 경로", "Relative path")}: ${value} → ${url}`);
       targets.add(url);
     }
   }
   const declarations = [...targets, ...unresolved];
   if (declarations.length > 1 && !["https", "http"].some(scheme => canonicalTargetsCanAgree(declarations, scheme))) {
-    report("FAIL", `서로 다른 대표 URL 선언: ${declarations.join(", ")}`);
+    report("FAIL", `${t("서로 다른 대표 URL 선언", "Conflicting canonical URLs")}: ${declarations.join(", ")}`);
     return null;
   }
   if (headLinks.length > 1) {
     const unique = targets.size + unresolved.size;
-    report("WARN", unique === 1 ? "canonical 중복 선언 — 한 태그만 유지 권장" : "canonical 선언이 여러 개 — 대상 URL 확인 필요");
+    report("WARN", unique === 1 ?
+      t("canonical 중복 선언 — 한 태그만 유지 권장", "Duplicate canonical declarations. Keep one tag") :
+      t("canonical 선언이 여러 개 — 대상 URL 확인 필요", "Multiple canonical declarations. Check the target URLs"));
   }
   if (unresolved.size) return null;
   const [target] = targets;
-  if (pageUrl && target && target !== httpUrl(pageUrl)) report("INFO", `다른 URL을 가리킴: ${target}`);
+  if (pageUrl && target && target !== httpUrl(pageUrl)) report("INFO", `${t("다른 URL을 가리킴", "Points to another URL")}: ${target}`);
   return target ?? null;
 }

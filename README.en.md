@@ -9,10 +9,10 @@ Search Visibility is a free local CLI and a collection of agent skills for techn
 ```sh
 git clone https://github.com/shaul1991/search-visibility.git
 cd search-visibility
-npm run demo
+npm run demo -- --lang en
 ```
 
-Open the printed `index.html` path in a browser. The demo uses two local pages, a synthetic search performance table, and three synthetic answers. The CLI messages and HTML report are currently in Korean. The accompanying `report.json` includes machine-readable fields such as `site.pages`, `searchPerformance`, and `ai.records`.
+Open the printed `index.html` path in a browser. The demo uses two local pages, a synthetic search performance table, and three synthetic answers. The accompanying `report.json` includes machine-readable fields such as `site.pages`, `searchPerformance`, and `ai.records`.
 
 ## Audit a site
 
@@ -26,10 +26,12 @@ Save this as `config.json`, replace the URL with a page you want indexed, and ru
 ```
 
 ```sh
-npm run visibility -- ./config.json
+npm run visibility -- ./config.json --lang en
 ```
 
 You can also supply local HTML paths in `targets` or a sitemap URL in `sitemap`. Input paths resolve relative to the config file. Remote audits request the specified sites. Reports are written locally under `visibility-reports/`.
+
+Set top-level `"locale": "en"` in the config to keep English as the report language. `--lang en|ko` overrides the config. Korean is the default. Reports preserve original page text, CSV labels, and observed questions. For help in English, run `npm run visibility -- --help --lang en`. The standalone checker also accepts `--lang`.
 
 Use the [localized page audit guide](docs/localized-pages.en.md) to check canonical and indexability signals for language and regional variants.
 

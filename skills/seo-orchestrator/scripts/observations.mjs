@@ -1,12 +1,13 @@
+import { t, currentLocale } from "./locale.mjs";
 import { domainToASCII } from "node:url";
 
 function requiredText(value, field) {
-  if (typeof value !== "string" || !value.trim()) throw new Error(`${field}에는 문자열을 입력하세요.`);
+  if (typeof value !== "string" || !value.trim()) throw new Error((currentLocale() === "en" ? `${field} must be a nonempty string.` : `${field}에는 문자열을 입력하세요.`));
   return value.trim();
 }
 
 function list(value, field) {
-  if (!Array.isArray(value)) throw new Error(`${field}에는 배열을 입력하세요.`);
+  if (!Array.isArray(value)) throw new Error((currentLocale() === "en" ? `${field} must be an array.` : `${field}에는 배열을 입력하세요.`));
   return value;
 }
 
@@ -16,19 +17,19 @@ function parseSource(value, field) {
   try {
     if (/^https?:\/\//i.test(text) && !/[\s\\]/u.test(text)) url = new URL(text);
   } catch { /* 공통 입력 오류에 필드 위치를 포함한다. */ }
-  if (!url || url.username || url.password) throw new Error(`${field}에는 HTTP(S) 출처 URL을 입력하세요.`);
+  if (!url || url.username || url.password) throw new Error((currentLocale() === "en" ? `${field} must be an HTTP(S) source URL.` : `${field}에는 HTTP(S) 출처 URL을 입력하세요.`));
   return url;
 }
 
 function canonicalDomain(value) {
   const input = requiredText(value, "domains");
   // domainToASCII also accepts some URL delimiters and strips the suffix.
-  if (/[\s:/@?#%\\]/u.test(input)) throw new Error(`domains에는 URL 대신 호스트명을 입력하세요: ${input}`);
+  if (/[\s:/@?#%\\]/u.test(input)) throw new Error((currentLocale() === "en" ? `Use hostnames in domains: ${input}` : `domains에는 URL 대신 호스트명을 입력하세요: ${input}`));
   const domain = domainToASCII(input).replace(/\.$/, "");
   const labels = domain.split(".");
   if (domain.length > 253 || labels.length < 2 ||
       !labels.every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) {
-    throw new Error(`domains의 호스트명이 유효하지 않습니다: ${input}`);
+    throw new Error((currentLocale() === "en" ? `Invalid hostname in domains: ${input}` : `domains의 호스트명이 유효하지 않습니다: ${input}`));
   }
   return domain;
 }
@@ -44,7 +45,7 @@ function comparablePath(url) {
 function ownedPrefix(value) {
   const url = parseSource(value, "ownedUrlPrefixes");
   if (/[?#]/.test(url.href) || !/[^/]/.test(url.pathname) || /%(?![a-f\d]{2})/i.test(url.pathname)) {
-    throw new Error("ownedUrlPrefixes에는 쿼리·프래그먼트 없는 유효한 계정 경로 URL을 입력하세요.");
+    throw new Error(t("ownedUrlPrefixes에는 쿼리·프래그먼트 없는 유효한 계정 경로 URL을 입력하세요.", "ownedUrlPrefixes requires valid account URLs without queries or fragments."));
   }
   return { origin: url.origin, path: comparablePath(url).replace(/\/$/, "") };
 }
@@ -56,7 +57,7 @@ function observationDate(value, field) {
   const midnight = Date.parse(date + "T00:00:00Z");
   if (!validFormat.test(text) || !Number.isFinite(Date.parse(text)) || !Number.isFinite(midnight) ||
       new Date(midnight).toISOString().slice(0, 10) !== date) {
-    throw new Error(`${field}에는 실제 날짜(YYYY-MM-DD) 또는 시간대가 있는 ISO 일시를 입력하세요.`);
+    throw new Error((currentLocale() === "en" ? `${field} must be a valid date (YYYY-MM-DD) or an ISO timestamp with a time zone.` : `${field}에는 실제 날짜(YYYY-MM-DD) 또는 시간대가 있는 ISO 일시를 입력하세요.`));
   }
   return text;
 }
@@ -96,7 +97,7 @@ export function analyzeObservations({ brand, aliases = [], domains = [], ownedUr
 
   const records = observations.map((row, index) => {
     const field = `observations[${index}]`;
-    if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error(`${field}에는 관측 레코드를 입력하세요.`);
+    if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error((currentLocale() === "en" ? `${field} must be an observation object.` : `${field}에는 관측 레코드를 입력하세요.`));
     const engine = requiredText(row.engine, field + ".engine");
     const query = requiredText(row.query, field + ".query");
     const observedAt = observationDate(row.observedAt, field + ".observedAt");
