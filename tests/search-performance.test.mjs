@@ -47,3 +47,45 @@ test("rejects incomplete, mixed-dimension, duplicate and malformed records witho
   ];
   for (const row of badRows) assert.throws(() => parseSearchPerformance("Pages,Clicks,Impressions\n" + row), /CSV/);
 });
+
+test("recognizes Japanese, German, French and Spanish dimensions and metrics", () => {
+  for (const [headers, clicks, impressions] of [
+    [["上位のページ", "上位のクエリ", "日付"], "クリック数", "表示回数"],
+    [["Die häufigsten Seiten", "Häufigste Suchanfragen", "Datum"], "Klicks", "Impressionen"],
+    [["Pages les plus populaires", "Requêtes les plus fréquentes", "Date"], "Clics", "Impressions"],
+    [["Páginas principales", "Consultas principales", "Fechas"], "Clics", "Impresiones"],
+  ]) {
+    for (const [index, dimension] of ["page", "query", "date"].entries()) {
+      const table = parseSearchPerformance(`${headers[index].normalize("NFD")},${clicks},${impressions}\nラベル,1,20`);
+      assert.equal(table.dimension, dimension);
+      assert.equal(table.ctr, 0.05);
+    }
+  }
+});
+
+test("imports BOM-prefixed semicolon exports with European grouping and decimal percentages", () => {
+  const table = parseSearchPerformance('\uFEFF\r\n"Häufigste Suchanfragen";"Klicks";"Impressionen";CTR;Position\r\n' +
+    '"KEDA; CPU, ""RAM""\nSkalierung";1.200;10.000;12,00 %;2,5\r\n' +
+    'HPA;1 000;20\u202F000;5,00%;1,4\r\nVPA;100;2\u00A0000;5,00%;3,4');
+  assert.deepEqual(table, {
+    dimension: "query", rowCount: 3, clicks: 2300, impressions: 32000, ctr: 2300 / 32000,
+    rows: [
+      { label: 'KEDA; CPU, "RAM"\nSkalierung', clicks: 1200, impressions: 10000 },
+      { label: "HPA", clicks: 1000, impressions: 20000 },
+      { label: "VPA", clicks: 100, impressions: 2000 },
+    ],
+  });
+  assert.equal(parseSearchPerformance('Pages,Clicks,Impressions,"extra; heading"\na,1,50,NA').impressions, 50);
+});
+
+test("rejects invalid grouping, percentages in counts and ambiguous or malformed headers", () => {
+  for (const value of ["1.25", "1.000,00", "1.234 567", "1  200", "1,20%", "0.000", "9.007.199.254.740.992"]) {
+    assert.throws(() => parseSearchPerformance(`Datum;Klicks;Impressionen\n2026-01-01;${value};100`), /CSV/);
+  }
+  for (const input of [
+    "Date,Clicks,Impressions,x;Date;Clicks;Impressions",
+    'Date;"Clicks"unexpected;Impressions',
+    "Pages;Clics;Klicks;Impressions",
+    "Date;Clicks;Impressions\n2026-01-01,1,20",
+  ]) assert.throws(() => parseSearchPerformance(input), /CSV/);
+});
