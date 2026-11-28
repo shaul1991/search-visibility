@@ -12,7 +12,12 @@ const TIMEOUT_MS = 15_000;
 
 function webUrl(raw) {
   if (typeof raw !== "string" || !/^https?:\/\//i.test(raw)) throw new Error(t("HTTP(S) 절대 URL을 입력하세요.", "Enter an absolute HTTP(S) URL."));
-  const url = new URL(raw);
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(t("유효한 HTTP(S) URL을 입력하세요.", "Enter a valid HTTP(S) URL."));
+  }
   if (url.username || url.password) throw new Error(t("인증정보가 포함된 URL은 사용할 수 없습니다.", "URLs with credentials are not supported."));
   url.hash = "";
   return url;
