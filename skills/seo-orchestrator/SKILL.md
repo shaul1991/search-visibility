@@ -27,6 +27,8 @@ description: >-
 
 ## 여러 페이지와 검색 성과를 함께 볼 때
 
+이 스킬 폴더 안에서 `node scripts/visibility.mjs https://example.org/`의 URL을 바꿔 실행하면 페이지를 즉시 점검합니다. `node scripts/visibility.mjs init`은 현재 폴더에 편집 가능한 `visibility.config.json`을 만듭니다. 기존 폴더 안의 원하는 경로를 `init` 뒤에 지정할 수도 있습니다.
+
 이 스킬 폴더 안에서 `node scripts/visibility.mjs /절대/경로/config.json`을 실행합니다. 예를 들어 `{"targets":["index.html"],"expectIndexable":true}`는 설정 파일 옆의 HTML을 점검합니다. 한국어가 기본이며, 영문 HTML 보고서와 CLI 출력은 `--lang en` 또는 설정 최상위의 `"locale": "en"`으로 선택합니다. CLI 옵션이 설정값보다 우선합니다. 사이트맵 URL은 `sitemap`, Search Console CSV는 `searchConsole`, 수집한 답변 배열 또는 JSON 파일은 `observations`에 지정합니다. 답변을 넣을 때는 `brand`를 지정합니다. 인용을 집계할 때는 소유 도메인을 `domains`에, 공유 플랫폼의 계정 URL을 `ownedUrlPrefixes`에 넣습니다. 같이 수집한 기술 진단과 검색 성과를 HTML·JSON으로 제공합니다. 비율을 설명할 때에는 입력한 기간과 표본 수를 함께 제시합니다. [입력 예제와 실행 방법](https://github.com/shaul1991/search-visibility/blob/main/docs/workbench.ko.md) · [현지화된 CSV 가져오기](https://github.com/shaul1991/search-visibility/blob/main/docs/search-console.ko.md) · [Localized CSV import](https://github.com/shaul1991/search-visibility/blob/main/docs/search-console.en.md)
 
 ## 다른 Skill과의 경계

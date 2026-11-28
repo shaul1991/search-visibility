@@ -9,11 +9,17 @@ import { parseSearchPerformance } from "./search-performance.mjs";
 import { auditSite } from "./site-audit.mjs";
 import { renderReport } from "./visibility-report.mjs";
 
-const help = () => (currentLocale() === "en" ? `Usage: node visibility.mjs <config.json> [--out <new folder>] [--fail-on-findings] [--lang en|ko]
+const help = () => (currentLocale() === "en" ? `Usage: node visibility.mjs <config.json|URL> [--out <new folder>] [--fail-on-findings] [--lang en|ko]
+       node visibility.mjs --url <URL> [--out <new folder>] [--fail-on-findings] [--lang en|ko]
+       node visibility.mjs init [config.json] [--lang en|ko]
+Use an absolute HTTP(S) URL to audit one page. init creates visibility.config.json by default.
 Relative input paths are resolved from the config file. Writes report.json and index.html.
 Language: --lang overrides config locale. The default is ko.
 The default output is a new folder under visibility-reports/ in the current directory.
-Exit codes: 0 completed, 1 FAIL found with --fail-on-findings, 2 input, collection or write error.` : `사용법: node visibility.mjs <설정.json> [--out <새 폴더>] [--fail-on-findings] [--lang en|ko]
+Exit codes: 0 completed, 1 FAIL found with --fail-on-findings, 2 input, collection or write error.` : `사용법: node visibility.mjs <설정.json|URL> [--out <새 폴더>] [--fail-on-findings] [--lang en|ko]
+        node visibility.mjs --url <URL> [--out <새 폴더>] [--fail-on-findings] [--lang en|ko]
+        node visibility.mjs init [설정.json] [--lang en|ko]
+HTTP(S) 절대 URL을 입력하면 한 페이지를 점검합니다. init의 기본 파일은 visibility.config.json입니다.
 설정 파일을 기준으로 상대 경로를 해석합니다. report.json과 index.html을 생성합니다.
 언어: --lang이 설정의 locale보다 우선하며 기본값은 ko입니다.
 출력 경로를 생략하면 현재 폴더의 visibility-reports/ 아래에 실행별 보고서를 만듭니다.
@@ -94,20 +100,57 @@ async function publishReport(report, requestedPath) {
   }
 }
 
+async function initConfig(file) {
+  const config = {
+    targets: ["https://example.org/"],
+    expectIndexable: true,
+    locale: currentLocale(),
+  };
+  const path = resolve(file);
+  try {
+    await writeFile(path, JSON.stringify(config, null, 2) + "\n", {flag: "wx"});
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      throw new Error(t(`설정 경로가 이미 있습니다: ${path}`, `Config path already exists: ${path}`));
+    }
+    throw error;
+  }
+  console.log(t(`설정을 생성했습니다: ${path}`, `Created config: ${path}`));
+  return 0;
+}
+
 async function main() {
-  const {values, positionals} = parseArgs({allowPositionals:true, options:{
-    out:{type:"string"}, lang:{type:"string"}, "fail-on-findings":{type:"boolean"}, help:{type:"boolean", short:"h"},
+  const {values, positionals, tokens} = parseArgs({allowPositionals:true, tokens:true, options:{
+    out:{type:"string"}, url:{type:"string"}, lang:{type:"string"}, "fail-on-findings":{type:"boolean"}, help:{type:"boolean", short:"h"},
   }});
-  const lang = values.lang;
-  if (values.help) {
-    withLocale(lang ?? "ko", () => console.log(help()));
-    return 0;
-  }
-  if (positionals.length !== 1) {
-    throw new Error(withLocale(lang ?? "ko", help));
-  }
-  const report = await collectReport(positionals[0], { lang });
-  return withLocale(report.locale, () => writeAndSummarize(report, values));
+  return withLocale(values.lang ?? "ko", async () => {
+    if (values.help) {
+      console.log(help());
+      return 0;
+    }
+    const urlOptions = tokens.filter(token => token.kind === "option" && token.name === "url");
+    if (urlOptions.length > 1) {
+      throw new Error(t("--url은 한 번만 지정하세요.", "Specify --url only once."));
+    }
+    const [input, configPath] = positionals;
+    if (input === "init") {
+      if (positionals.length > 2 || values.url !== undefined || values.out !== undefined || values["fail-on-findings"] !== undefined) {
+        throw new Error(help());
+      }
+      return initConfig(configPath ?? "visibility.config.json");
+    }
+    if (values.url === undefined ? positionals.length !== 1 : positionals.length !== 0) {
+      throw new Error(help());
+    }
+    const url = values.url ?? (/^(?:https?:|[a-z][a-z\d+.-]*:\/\/|\/\/)/i.test(input) ? input : undefined);
+    if (url !== undefined && !/^https?:\/\/[^/\\\s?#]/i.test(url)) {
+      throw new Error(t("HTTP(S) 절대 URL을 입력하세요.", "Enter an absolute HTTP(S) URL."));
+    }
+    const report = url === undefined
+      ? await collectReport(input, {lang: values.lang})
+      : await collectConfig({targets: [url], expectIndexable: true}, process.cwd(), currentLocale());
+    return withLocale(report.locale, () => writeAndSummarize(report, values));
+  });
 }
 
 async function writeAndSummarize(report, values) {

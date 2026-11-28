@@ -4,8 +4,12 @@ import { mkdtemp, readFile, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 
+import { promisify } from "node:util";
+import { startHttpFixture } from "./loopback.mjs";
+
+const exec = promisify(execFile);
 const cli = fileURLToPath(new URL("../skills/seo-orchestrator/scripts/visibility.mjs", import.meta.url));
 const demo = fileURLToPath(new URL("../examples/demo/config.json", import.meta.url));
 
@@ -137,4 +141,79 @@ test("language help and validation work before collecting inputs", async t => {
   await writeFile(join(cwd, "config.json"), JSON.stringify({locale: "en", searchConsole: 42}));
   assert.match(run(cwd, "config.json").stderr, /searchConsole must be a CSV file path/);
   assert.match(run(cwd, "config.json", "--lang", "ko").stderr, /CSV 파일 경로가 필요합니다/);
+});
+
+test("URL audit modes follow redirects and publish the same findings as a config", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-url-"));
+  t.after(() => rm(cwd, {recursive: true, force: true}));
+  const {origin, tcp} = await startHttpFixture(t, url => {
+    if (url.pathname === "/old") return {status: 302, headers: {Location: "/guide"}};
+    if (url.pathname === "/guide") {
+      return {headers: {"Content-Type": "text/html"}, body: '<title>Guide</title><meta name="robots" content="noindex">'};
+    }
+    return {status: 404};
+  });
+  if (!tcp) return t.skip("CLI subprocess needs a loopback server.");
+
+  const url = origin + "/old";
+  await writeFile(join(cwd, "config.json"), JSON.stringify({targets: [url], expectIndexable: true, locale: "en"}));
+  const reports = [];
+  for (const [folder, args] of [["direct", [url]], ["flag", ["--url", url]], ["config", ["config.json"]]]) {
+    const command = exec(process.execPath, [cli, ...args, "--out", folder, "--lang", "en", "--fail-on-findings"], {cwd, timeout: 15000});
+    await assert.rejects(command, error => error.code === 1 && /Pages: 1/.test(error.stdout));
+    const report = JSON.parse(await readFile(join(cwd, folder, "report.json"), "utf8"));
+    assert.equal(report.site.pages[0].target, url);
+    assert.ok(report.site.pages[0].results.some(finding => finding.level === "FAIL" && /noindex/i.test(finding.detail)));
+    assert.match(await readFile(join(cwd, folder, "index.html"), "utf8"), /<html lang="en">/);
+    const {checkedAt, ...page} = report.site.pages[0];
+    assert.ok(Number.isFinite(Date.parse(checkedAt)));
+    reports.push({...report.site, pages: [page]});
+  }
+  assert.deepEqual(reports[0], reports[2]);
+  assert.deepEqual(reports[1], reports[2]);
+});
+
+test("init writes a localized starter and preserves existing paths", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-init-"));
+  t.after(() => rm(cwd, {recursive: true, force: true}));
+  const result = run(cwd, "init", "--lang", "en");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Created config:/);
+  const path = join(cwd, "visibility.config.json");
+  const original = await readFile(path, "utf8");
+  const config = JSON.parse(original);
+  assert.equal(config.locale, "en");
+  assert.equal(config.expectIndexable, true);
+  assert.equal(new URL(config.targets[0]).protocol, "https:");
+  assert.equal(run(cwd, "init").status, 2);
+  assert.equal(await readFile(path, "utf8"), original);
+
+  const custom = run(cwd, "init", "project.json");
+  assert.equal(custom.status, 0, custom.stderr);
+  assert.equal(JSON.parse(await readFile(join(cwd, "project.json"), "utf8")).locale, "ko");
+  await symlink("absent.json", join(cwd, "linked.json"));
+  assert.equal(run(cwd, "init", "linked.json").status, 2);
+  await assert.rejects(readFile(join(cwd, "absent.json")), {code: "ENOENT"});
+
+  await writeFile(join(cwd, "page.html"), "<title>Editable starter</title>");
+  await writeFile(path, JSON.stringify({...config, targets: ["page.html"]}));
+  assert.equal(run(cwd, "visibility.config.json", "--out", "report").status, 0);
+});
+
+test("URL and init argument errors exit 2 before writing any artifacts", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-arguments-"));
+  t.after(() => rm(cwd, {recursive: true, force: true}));
+  for (const args of [
+    ["--url", "page.html"], ["http:example.org"], ["https:///example.org"],
+    ["--url", "https://:bad"], ["--url", "https://user:pass@example.org"],
+    ["--url", "https://example.org", "--url=https://example.net"],
+    ["ftp://example.org"], ["//example.org"], ["config.json", "--url", "https://example.org"],
+    ["init", "--out", "report"], ["init", "--fail-on-findings"], ["init", "a.json", "b.json"],
+  ]) {
+    const result = run(cwd, ...args, "--lang", "en");
+    assert.equal(result.status, 2, args.join(" "));
+    assert.match(result.stderr, /HTTP\(S\)|URLs with credentials|--url only once|Usage:/);
+  }
+  await assert.rejects(readFile(join(cwd, "visibility.config.json")), {code: "ENOENT"});
+  await assert.rejects(readFile(join(cwd, "visibility-reports")), {code: "ENOENT"});
 });

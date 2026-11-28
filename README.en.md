@@ -16,18 +16,20 @@ Open the printed `index.html` path in a browser. The demo uses two local pages, 
 
 ## Audit a site
 
-Save this as `config.json`, replace the URL with a page you want indexed, and run the command below.
-
-```json
-{
-  "targets": ["https://example.org/"],
-  "expectIndexable": true
-}
-```
+Run a one-page audit from the repository directory. Replace the example URL with the page you want indexed.
 
 ```sh
-npm run visibility -- ./config.json --lang en
+npm run visibility -- https://example.org/ --lang en
 ```
+
+You can also pass the address as `--url https://example.org/`. To create a reusable starter, run the following commands and edit the example URL before the second command.
+
+```sh
+npm run visibility -- init --lang en
+npm run visibility -- ./visibility.config.json
+```
+
+`init` accepts an optional file path inside an existing directory and preserves existing files. The starter records the selected report language.
 
 You can also supply local HTML paths in `targets` or a sitemap URL in `sitemap`. Input paths resolve relative to the config file. Remote audits request the specified sites. Reports are written locally under `visibility-reports/`.
 
