@@ -47,6 +47,8 @@ Use the [ChatGPT Search visibility guide](docs/chatgpt-search.en.md) to measure 
 
 Use the [Perplexity Search citation guide](docs/perplexity-search.en.md) to record search settings and count citations to an owned account.
 
+Use the [Gemini web app source guide](docs/gemini-app.en.md) to collect public links and measure visibility by language and country.
+
 Use the [Google AI visibility guide](docs/google-ai.en.md) to interpret Search Console AI impressions and sampled citations.
 
 Use the [Bing and Copilot citation guide](docs/bing-ai.en.md) to compare Bing Webmaster Tools metrics and locally collected answers.
