@@ -7,11 +7,13 @@ import { parseArgs } from "node:util";
 import { analyzeObservations } from "./observations.mjs";
 import { parseSearchPerformance } from "./search-performance.mjs";
 import { auditSite } from "./site-audit.mjs";
+import { compareReports, renderComparison } from "./visibility-comparison.mjs";
 import { renderReport } from "./visibility-report.mjs";
 
 const help = () => (currentLocale() === "en" ? `Usage: node visibility.mjs <config.json|URL> [--out <new folder>] [--fail-on-findings] [--lang en|ko]
        node visibility.mjs --url <URL> [--out <new folder>] [--fail-on-findings] [--lang en|ko]
        node visibility.mjs init [config.json] [--lang en|ko]
+       node visibility.mjs compare <before.report.json> <after.report.json> [--out <new folder>] [--lang en|ko]
 Use an absolute HTTP(S) URL to audit one page. init creates visibility.config.json by default.
 Relative input paths are resolved from the config file. Writes report.json and index.html.
 Language: --lang overrides config locale. The default is ko.
@@ -19,6 +21,7 @@ The default output is a new folder under visibility-reports/ in the current dire
 Exit codes: 0 completed, 1 FAIL found with --fail-on-findings, 2 input, collection or write error.` : `사용법: node visibility.mjs <설정.json|URL> [--out <새 폴더>] [--fail-on-findings] [--lang en|ko]
         node visibility.mjs --url <URL> [--out <새 폴더>] [--fail-on-findings] [--lang en|ko]
         node visibility.mjs init [설정.json] [--lang en|ko]
+        node visibility.mjs compare <변경전.report.json> <변경후.report.json> [--out <새 폴더>] [--lang en|ko]
 HTTP(S) 절대 URL을 입력하면 한 페이지를 점검합니다. init의 기본 파일은 visibility.config.json입니다.
 설정 파일을 기준으로 상대 경로를 해석합니다. report.json과 index.html을 생성합니다.
 언어: --lang이 설정의 locale보다 우선하며 기본값은 ko입니다.
@@ -73,7 +76,7 @@ async function collectConfig(config, baseDir, locale) {
   return {schemaVersion: 1, locale, generatedAt: new Date().toISOString(), brand: config.brand || "", sample: config.sample === true, site, searchPerformance, ai};
 }
 
-async function publishReport(report, requestedPath) {
+async function publishReport(report, requestedPath, render = renderReport) {
   const parent = requestedPath ? dirname(resolve(requestedPath)) : resolve("visibility-reports");
   await mkdir(parent, {recursive: true});
   const temp = await mkdtemp(join(parent, ".visibility-"));
@@ -82,7 +85,7 @@ async function publishReport(report, requestedPath) {
   let publishedJson = false;
   try {
     await writeFile(join(temp, "report.json"), JSON.stringify(report, null, 2) + "\n");
-    await writeFile(join(temp, "index.html"), renderReport(report));
+    await writeFile(join(temp, "index.html"), render(report));
     // 같은 이름의 사용자 파일과 이전 보고서는 보존한다.
     await mkdir(target);
     reserved = true;
@@ -133,6 +136,17 @@ async function main() {
       throw new Error(t("--url은 한 번만 지정하세요.", "Specify --url only once."));
     }
     const [input, configPath] = positionals;
+    if (input === "compare") {
+      if (positionals.length !== 3 || values.url !== undefined || values["fail-on-findings"] !== undefined) {
+        throw new Error(help());
+      }
+      const [before, after] = await Promise.all(positionals.slice(1).map(readJson));
+      const report = compareReports(before, after);
+      const target = await publishReport(report, values.out, renderComparison);
+      console.log(t("전후 비교 보고서를 생성했습니다.", "Created before-and-after comparison.") +
+        `\nHTML ${join(target, "index.html")}\nJSON ${join(target, "report.json")}`);
+      return 0;
+    }
     if (input === "init") {
       if (positionals.length > 2 || values.url !== undefined || values.out !== undefined || values["fail-on-findings"] !== undefined) {
         throw new Error(help());

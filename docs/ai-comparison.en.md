@@ -13,7 +13,10 @@ From the repository root, with Node.js 18 or later, use two new output directori
 ```sh
 npm run visibility -- examples/ai-comparison/before.config.json --out ./ai-before
 npm run visibility -- examples/ai-comparison/after.config.json --out ./ai-after
+npm run visibility -- compare ./ai-before/report.json ./ai-after/report.json --out ./ai-diff --lang en
 ```
+
+Open `ai-diff/index.html` or read `ai-diff/report.json` for before, after, and after-minus-before values. JSON rates use fractions (a delta of `0.5` is +50 percentage points). Missing measurements yield a null delta. Site deltas require the same targets and complete audits. Search Console deltas require the same CSV dimension.
 
 Open each `index.html` for the summary and inspect `ai.records` in each `report.json` for the matched answers. Both runs have two answers and two brand mentions. Owned citations rise from 1/2 to 2/2, a change of 50 percentage points. The Korean prompt goes from no citation to an owned citation. The English prompt cites the owned host in both runs. The inputs demonstrate UTF-8 questions, a Unicode hostname normalized to ASCII in the report, and timestamps with explicit UTC offsets for Seoul and New York.
 

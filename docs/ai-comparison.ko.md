@@ -13,7 +13,10 @@ Node.js 18 이상에서 저장소 루트로 이동한 뒤, 새 출력 디렉터�
 ```sh
 npm run visibility -- examples/ai-comparison/before.config.json --out ./ai-before
 npm run visibility -- examples/ai-comparison/after.config.json --out ./ai-after
+npm run visibility -- compare ./ai-before/report.json ./ai-after/report.json --out ./ai-diff --lang ko
 ```
+
+`ai-diff/index.html` 또는 `ai-diff/report.json`에서 변경 전, 변경 후, 후−전 증감을 확인하세요. JSON 비율은 소수로 기록합니다(`0.5` 증가는 +50%p). 측정값이 없으면 증감은 null입니다. 사이트 증감은 같은 대상을 양쪽에서 모두 점검했을 때 표시하며, Search Console 증감은 CSV 차원이 같을 때 표시합니다.
 
 각 `index.html`은 요약을 보여줍니다. 각 `report.json`의 `ai.records`에서 짝을 맞춘 답변을 확인할 수 있습니다. 두 실행 모두 답변 두 건에 브랜드가 언급됩니다. 소유 출처의 인용은 1/2에서 2/2로 50%p 늘어납니다. 한국어 질문에서 소유 출처 인용이 새로 생겼고 영어 질문에서는 두 시점 모두 소유 출처를 인용했습니다. 입력에는 UTF-8 질문, 보고서에서 ASCII로 정규화되는 유니코드 호스트명, 서울과 뉴욕의 UTC 오프셋을 명시한 시각이 들어 있습니다.
 

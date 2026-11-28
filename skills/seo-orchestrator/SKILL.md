@@ -31,6 +31,8 @@ description: >-
 
 이 스킬 폴더 안에서 `node scripts/visibility.mjs /절대/경로/config.json`을 실행합니다. 예를 들어 `{"targets":["index.html"],"expectIndexable":true}`는 설정 파일 옆의 HTML을 점검합니다. 한국어가 기본이며, 영문 HTML 보고서와 CLI 출력은 `--lang en` 또는 설정 최상위의 `"locale": "en"`으로 선택합니다. CLI 옵션이 설정값보다 우선합니다. 사이트맵 URL은 `sitemap`, Search Console CSV는 `searchConsole`, 수집한 답변 배열 또는 JSON 파일은 `observations`에 지정합니다. 답변을 넣을 때는 `brand`를 지정합니다. 인용을 집계할 때는 소유 도메인을 `domains`에, 공유 플랫폼의 계정 URL을 `ownedUrlPrefixes`에 넣습니다. 같이 수집한 기술 진단과 검색 성과를 HTML·JSON으로 제공합니다. 비율을 설명할 때에는 입력한 기간과 표본 수를 함께 제시합니다. [입력 예제와 실행 방법](https://github.com/shaul1991/search-visibility/blob/main/docs/workbench.ko.md) · [현지화된 CSV 가져오기](https://github.com/shaul1991/search-visibility/blob/main/docs/search-console.ko.md) · [Localized CSV import](https://github.com/shaul1991/search-visibility/blob/main/docs/search-console.en.md)
 
+변경 전후의 `report.json` 두 개를 만들었다면 `node scripts/visibility.mjs compare before/report.json after/report.json --out diff`를 실행합니다. 같은 점검 대상과 CSV 차원, 같은 AI 관측 조건을 사용하고 `diff/index.html`에서 표본 수와 증감을 확인합니다.
+
 ## 다른 Skill과의 경계
 
 SEO(발견·색인·표시·AI 검색 노출)는 이 저장소가 맡습니다. 아래처럼 성격이 다른 일은 다루지 않으며, 필요하면 그 Skill을 따로 씁니다.

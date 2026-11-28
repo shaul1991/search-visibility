@@ -217,3 +217,58 @@ test("URL and init argument errors exit 2 before writing any artifacts", async t
   await assert.rejects(readFile(join(cwd, "visibility.config.json")), {code: "ENOENT"});
   await assert.rejects(readFile(join(cwd, "visibility-reports")), {code: "ENOENT"});
 });
+
+test("compare reports preserves zero, marks unavailable deltas and escapes HTML", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "visibility-comparison-"));
+  t.after(() => rm(cwd, {recursive:true, force:true}));
+  assert.equal(run(cwd, demo, "--out", "baseline").status, 0);
+  const beforeFile = "baseline/report.json";
+  const afterFile = "after.json";
+  const before = JSON.parse(await readFile(join(cwd, beforeFile), "utf8"));
+  const after = structuredClone(before);
+  const engine = "<img src=x>";
+  before.ai.byEngine = [{engine: engine.toUpperCase(), sampleSize: 2, mentionRate: 0, citationRate: null}];
+  after.ai.byEngine = [
+    {engine, sampleSize: 2, mentionRate: 0.5, citationRate: 0},
+    {engine: "New", sampleSize: 1, mentionRate: 1, citationRate: 0},
+  ];
+  after.site.pages[0].results.push({level:"FAIL"}, {level:"WARN"});
+  after.searchPerformance.clicks = 35;
+  after.searchPerformance.ctr = 0.1;
+  await writeFile(join(cwd, beforeFile), JSON.stringify(before));
+  await writeFile(join(cwd, afterFile), JSON.stringify(after));
+
+  const result = run(cwd, "compare", beforeFile, afterFile, "--out", "diff", "--lang", "en");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Created before-and-after comparison/);
+  const json = JSON.parse(await readFile(join(cwd, "diff/report.json"), "utf8"));
+  assert.equal(json.kind, "comparison");
+  assert.equal(json.site.fail.delta, 1);
+  assert.equal(json.site.warn.delta, 1);
+  assert.equal(json.searchPerformance.impressions.delta, 0);
+  assert.equal(json.searchPerformance.clicks.delta, 15);
+  assert.ok(Math.abs(json.searchPerformance.ctr.delta - (0.1 - 20 / 350)) < 1e-12);
+  assert.deepEqual(json.ai.byEngine[0].mentionRate, {before:0, after:0.5, delta:0.5});
+  assert.deepEqual(json.ai.byEngine[0].citationRate, {before:null, after:0, delta:null});
+  assert.equal(json.ai.byEngine[1].mentionRate.delta, null);
+  const html = await readFile(join(cwd, "diff/index.html"), "utf8");
+  assert.match(html, /lang="en"/);
+  assert.match(html, /&lt;img src=x&gt;/);
+  assert.doesNotMatch(html, /<img src=x>/);
+  assert.match(html, /\+50 pp/);
+  assert.equal(run(cwd, "compare", beforeFile, afterFile, "--out", "diff").status, 2);
+
+  after.site.pages[0].error = "Unavailable";
+  after.searchPerformance.dimension = "date";
+  await writeFile(join(cwd, afterFile), JSON.stringify(after));
+  assert.equal(run(cwd, "compare", beforeFile, afterFile, "--out", "partial").status, 0);
+  const partial = JSON.parse(await readFile(join(cwd, "partial/report.json"), "utf8"));
+  assert.equal(partial.site.fail.delta, null);
+  assert.equal(partial.searchPerformance.clicks.delta, null);
+  assert.match(await readFile(join(cwd, "partial/index.html"), "utf8"), /lang="ko"/);
+
+  const invalid = run(cwd, "compare", beforeFile, "diff/report.json", "--out", "invalid", "--lang", "en");
+  assert.equal(invalid.status, 2);
+  assert.match(invalid.stderr, /after input must be a valid v1/);
+  await assert.rejects(readFile(join(cwd, "invalid/report.json")), {code:"ENOENT"});
+});
