@@ -14,6 +14,17 @@ npm run demo -- --lang en
 
 Open the printed `index.html` path in a browser. The demo uses two local pages, a synthetic search performance table, and three synthetic answers. The accompanying `report.json` includes machine-readable fields such as `site.pages`, `searchPerformance`, and `ai.records`.
 
+### Run the npm package
+
+Run `npm pack` in the checkout and use the generated tarball path in the commands below. The second command prints the single-page audit as JSON.
+
+```bash
+npx --yes --package=./search-visibility-0.6.0.tgz search-visibility https://example.org/ --lang en
+npx --yes --package=./search-visibility-0.6.0.tgz seo-check https://example.org/ --json
+```
+
+After publication to the npm registry, you can use `search-visibility` as the value of `--package`.
+
 ## Audit a site
 
 Run a one-page audit from the repository directory. Replace the example URL with the page you want indexed.
