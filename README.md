@@ -35,6 +35,8 @@ npm run visibility -- ./visibility.config.json
 
 한국어가 기본입니다. 영문 CLI와 HTML 보고서는 `npm run demo -- --lang en`으로 확인할 수 있습니다. 설정 최상위에 `"locale": "en"`을 저장할 수 있으며, 실행 시 지정한 `--lang en|ko`가 설정값에 우선합니다. 페이지 제목, CSV 항목, 관측 질문 등 원본 데이터는 그대로 표시됩니다. 독립 실행 `seo-check`에서도 `--lang`을 사용할 수 있습니다.
 
+`npm run visibility -- compare <변경전/report.json> <변경후/report.json>`으로 사이트 진단, Search Console 실적, AI 엔진별 가시성의 증감을 HTML과 JSON으로 생성합니다.
+
 같은 질문의 AI 답변을 다시 수집했다면 [변경 전후 AI 출처 인용 비교](docs/ai-comparison.ko.md)에서 두 보고서를 만드는 방법을 확인하세요.
 
 [네이버·Daum 웹 검색과 네이버 AI 브리핑 측정 안내](docs/korea-search.ko.md)에서 관측 절차와 합성 예제를 확인할 수 있습니다.

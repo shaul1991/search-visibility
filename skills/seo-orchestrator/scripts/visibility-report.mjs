@@ -13,7 +13,7 @@ function number(value) {
   return formats[currentLocale()].number.format(value);
 }
 
-function html(value) {
+export function html(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => escapeChars[char]);
 }
 
